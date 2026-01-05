@@ -1,42 +1,67 @@
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* Strict Color System */
+  --color-base: #ffffff;
+  --color-text: #1a1a1a;
+  --color-accent: #000000; /* Minimalist accent, can be changed. Spec says "Accent color: 1". Let's pick a calm blue or just black for now as one accent? Spec says Neutral allowed.
+  Let's use a subtle blue as the 1 accent. */
+  --color-accent-primary: #2d5af5;
+  --color-border: #e5e5e5;
+  --color-subtle: #737373;
+
+  /* Typography */
+  --font-sans: var(--font-geist-sans), -apple-system, BlinkMacSystemFont,
+    "Segoe UI", Roboto, sans-serif;
+  --font-mono: var(--font-geist-mono), monospace;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
-html,
-body {
-  max-width: 100vw;
-  overflow-x: hidden;
-}
-
-body {
-  color: var(--foreground);
-  background: var(--background);
-  font-family: Arial, Helvetica, sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-}
-
+/* Reset */
 * {
   box-sizing: border-box;
   padding: 0;
   margin: 0;
 }
 
-a {
-  color: inherit;
-  text-decoration: none;
+/* Strict Design Constraints */
+* {
+  box-shadow: none !important;
+  text-shadow: none !important;
+  animation: none !important;
+  transition: none !important;
 }
 
-@media (prefers-color-scheme: dark) {
-  html {
-    color-scheme: dark;
-  }
+body {
+  background-color: var(--color-base);
+  color: var(--color-text);
+  font-family: var(--font-sans);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-weight: 500;
+  line-height: 1.2;
+}
+
+button {
+  cursor: pointer;
+  border: none;
+  background: none;
+  font-family: inherit;
+  color: inherit;
+}
+
+/* Utilities */
+.container {
+  max-width: 680px; /* Reading optimized */
+  margin: 0 auto;
+  padding: 2rem 1rem;
+}
+
+.mono {
+  font-family: var(--font-mono);
 }
