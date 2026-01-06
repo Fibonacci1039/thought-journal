@@ -23,10 +23,7 @@ export default async function TopicsPage() {
     <main>
       <h1>トピック管理</h1>
       <div style={{ marginTop: "2rem" }}>
-        <TopicManager
-          initialTopics={topics}
-          apiToken={process.env.APP_SECRET_TOKEN || ""}
-        />
+        <TopicManager initialTopics={topics} />
       </div>
     </main>
   );

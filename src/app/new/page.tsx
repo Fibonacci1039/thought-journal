@@ -8,10 +8,7 @@ export default async function NewEntryPage() {
   return (
     <main>
       <h1 style={{ marginBottom: "2rem" }}>新規作成</h1>
-      <EntryForm
-        topics={topics}
-        apiToken={process.env.APP_SECRET_TOKEN || ""}
-      />
+      <EntryForm topics={topics} />
     </main>
   );
 }

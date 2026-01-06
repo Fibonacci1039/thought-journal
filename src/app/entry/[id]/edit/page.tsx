@@ -19,11 +19,7 @@ export default async function EditEntryPage({
   return (
     <main>
       <h1 style={{ marginBottom: "2rem" }}>記録の編集</h1>
-      <EntryForm
-        topics={topics}
-        initialData={entry}
-        apiToken={process.env.APP_SECRET_TOKEN || ""}
-      />
+      <EntryForm topics={topics} initialData={entry} />
     </main>
   );
 }

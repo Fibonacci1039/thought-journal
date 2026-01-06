@@ -3,18 +3,18 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Entry, Topic } from "@/lib/types";
+import { createEntryAction, updateEntryAction } from "@/app/actions";
 
 type Props = {
   topics: Topic[];
   initialData?: Entry;
-  apiToken: string;
 };
 
-export function EntryForm({ topics, initialData, apiToken }: Props) {
+export function EntryForm({ topics, initialData }: Props) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
-    narrative: initialData?.human_view || "", // human_view is now a string
+    narrative: initialData?.human_view || "",
     ai_view_str: initialData?.ai_view
       ? JSON.stringify(initialData.ai_view, null, 2)
       : '{\n  "summary": ""\n}',
@@ -36,32 +36,28 @@ export function EntryForm({ topics, initialData, apiToken }: Props) {
       }
 
       const payload = {
-        human_view: formData.narrative, // Send string directly
+        human_view: formData.narrative,
         ai_view: aiViewJson,
         topic_ids: formData.topic_ids,
       };
 
-      const url = initialData
-        ? `/api/entries/${initialData.id}` // Use id instead of entry_id
-        : "/api/entries";
+      const res = initialData
+        ? await updateEntryAction(initialData.id, payload)
+        : await createEntryAction(payload);
 
-      const method = initialData ? "PUT" : "POST";
+      if (!res.success) {
+        // Explicitly cast or access safely because TS inference can be tricky here
+        const errorMsg = (res as { success: false; error: string }).error;
+        throw new Error(errorMsg);
+      }
 
-      const res = await fetch(url, {
-        method,
-        headers: {
-          "Content-Type": "application/json",
-          "x-app-token": apiToken,
-        },
-        body: JSON.stringify(payload),
-      });
-
-      if (!res.ok) throw new Error("Failed to save");
-
+      // Success handled by revalidatePath in action, but we route to home
       router.push("/");
       router.refresh();
-    } catch {
-      alert("記録の保存中にエラーが発生しました");
+    } catch (e) {
+      const msg =
+        e instanceof Error ? e.message : "記録の保存中にエラーが発生しました";
+      alert(msg);
     } finally {
       setLoading(false);
     }
@@ -137,11 +133,9 @@ export function EntryForm({ topics, initialData, apiToken }: Props) {
         style={{
           display: "grid",
           gap: "1.5rem",
-          gridTemplateColumns: "1fr", // Single column since source_note removed? Or just topics full width.
+          gridTemplateColumns: "1fr",
         }}
       >
-        {/* Source Note Removed */}
-
         <div>
           <label
             style={{
@@ -156,7 +150,7 @@ export function EntryForm({ topics, initialData, apiToken }: Props) {
             {topics.map((t) => (
               <button
                 type="button"
-                key={t.id} // Use id
+                key={t.id}
                 onClick={() => toggleTopic(t.id)}
                 style={{
                   padding: "0.25rem 0.6rem",
@@ -171,7 +165,7 @@ export function EntryForm({ topics, initialData, apiToken }: Props) {
                   borderRadius: "4px",
                 }}
               >
-                {t.name} {/* Use name */}
+                {t.name}
               </button>
             ))}
           </div>
