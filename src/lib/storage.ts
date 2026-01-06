@@ -3,6 +3,26 @@ import { Entry, Topic } from "./types";
 
 // -- Entries --
 
+export async function getRandomEntry(): Promise<Entry | undefined> {
+  // PostgREST doesn't support random() natively in a simple way without extensions or RPC,
+  // but for a personal app with <10k entries, fetching IDs or using a limit/offset trick is fine.
+  // Here we'll use a simple "fetch IDs -> pick one -> fetch details" approach for simplicity/compatibility.
+
+  const { data: ids, error } = await supabase.from("entries").select("id");
+
+  if (error) {
+    console.error("Error fetching entry IDs:", error);
+    return undefined;
+  }
+
+  if (!ids || ids.length === 0) return undefined;
+
+  const randomIndex = Math.floor(Math.random() * ids.length);
+  const randomId = ids[randomIndex].id;
+
+  return getEntry(randomId);
+}
+
 export async function getEntries(): Promise<Entry[]> {
   const { data, error } = await supabase
     .from("entries")
@@ -31,6 +51,7 @@ export async function createEntry(
     .from("entries")
     .insert([
       {
+        title: entry.title,
         human_view: entry.human_view,
         ai_view: entry.ai_view,
         topic_ids: entry.topic_ids,

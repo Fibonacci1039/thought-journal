@@ -14,6 +14,7 @@ export type Entry = {
   id: string; // UUID
   created_at: string; // ISO string
   updated_at: string; // ISO string
+  title?: string | null; // Optional title
   human_view: string; // pure text
   ai_view: Record<string, unknown>; // JSONB (Knowledge Layer)
   topic_ids: string[]; // UUID[] (Relational)

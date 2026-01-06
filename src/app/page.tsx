@@ -1,13 +1,35 @@
 import { EntryList } from "@/components/EntryList";
 import { getEntries } from "@/lib/storage";
+import Link from "next/link";
 
 export const dynamic = "force-dynamic";
 
 export default async function Home() {
   try {
     const entries = await getEntries();
+
     return (
       <main>
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "flex-end",
+            marginBottom: "1rem",
+          }}
+        >
+          <Link
+            href="/weekly"
+            style={{
+              fontSize: "0.9rem",
+              color: "var(--color-accent-primary)",
+              textDecoration: "none",
+              fontWeight: 600,
+            }}
+          >
+            📮 週次レターを作成 (Weekly Review) →
+          </Link>
+        </div>
+
         <h1>記録一覧</h1>
         <div style={{ marginTop: "2rem" }}>
           <EntryList entries={entries} />

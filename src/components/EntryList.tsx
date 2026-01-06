@@ -71,12 +71,14 @@ export function EntryList({ entries }: { entries: Entry[] }) {
               }}
             >
               {groupEntries.map((entry) => {
-                // Determine display text: Use AI summary if available, else narrative
+                // Determine display text: Title > AI summary > Narrative
                 const summary = (entry.ai_view as any)?.summary;
-                const displayText =
-                  summary && summary.length > 0
-                    ? summary
-                    : entry.human_view || "無題の記録";
+                const title = entry.title;
+                const displayText = title
+                  ? title
+                  : summary && summary.length > 0
+                  ? summary
+                  : entry.human_view || "無題の記録";
 
                 return (
                   <Link
@@ -117,6 +119,7 @@ export function EntryList({ entries }: { entries: Entry[] }) {
                           overflow: "hidden",
                           whiteSpace: "nowrap", // Single line summary
                           textOverflow: "ellipsis",
+                          fontWeight: title ? 600 : 400, // Bold if title
                         }}
                       >
                         {displayText}
