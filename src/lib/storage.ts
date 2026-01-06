@@ -34,6 +34,8 @@ export async function createEntry(
         human_view: entry.human_view,
         ai_view: entry.ai_view,
         topic_ids: entry.topic_ids,
+        mood: entry.mood,
+        meta: entry.meta,
       },
     ])
     .select()
@@ -106,4 +108,19 @@ export async function deleteTopic(id: string): Promise<void> {
   const { error } = await supabase.from("topics").delete().eq("id", id);
 
   if (error) throw error;
+}
+
+// -- Periodic Summaries --
+
+export async function getLatestTopicSummary(topicId: string) {
+  const { data, error } = await supabase
+    .from("periodic_summaries")
+    .select("*")
+    .eq("topic_id", topicId)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .single();
+
+  if (error && error.code !== "PGRST116") throw error; // PGRST116 is "Row not found"
+  return data;
 }

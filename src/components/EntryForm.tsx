@@ -10,35 +10,61 @@ type Props = {
   initialData?: Entry;
 };
 
+// Default AI View structure
+const DEFAULT_AI_VIEW = {
+  schema_version: "1.0",
+};
+
 export function EntryForm({ topics, initialData }: Props) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
-  const [formData, setFormData] = useState({
-    narrative: initialData?.human_view || "",
-    ai_view_str: initialData?.ai_view
+
+  // Minimalist Form State
+  const [narrative, setNarrative] = useState(initialData?.human_view || "");
+  const [selectedTopicIds, setSelectedTopicIds] = useState<string[]>(
+    initialData?.topic_ids || []
+  );
+
+  // AI View Input State
+  const [aiJsonInput, setAiJsonInput] = useState(
+    initialData?.ai_view && Object.keys(initialData.ai_view).length > 1
       ? JSON.stringify(initialData.ai_view, null, 2)
-      : '{\n  "summary": ""\n}',
-    topic_ids: initialData?.topic_ids || ([] as string[]),
-  });
+      : ""
+  );
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!narrative.trim()) {
+      alert("思考ログを入力してください");
+      return;
+    }
+
+    // Parse AI JSON Key
+    let parsedAiView = initialData?.ai_view || DEFAULT_AI_VIEW;
+    if (aiJsonInput.trim()) {
+      try {
+        // Remove markdown code blocks if present
+        const cleaned = aiJsonInput
+          .replace(/```json/g, "")
+          .replace(/```/g, "")
+          .trim();
+        parsedAiView = JSON.parse(cleaned);
+      } catch (err) {
+        alert(
+          "AIデータのJSON形式が正しくありません。\n確認して修正するか、空欄にしてください。"
+        );
+        return;
+      }
+    }
+
     setLoading(true);
 
     try {
-      let aiViewJson;
-      try {
-        aiViewJson = JSON.parse(formData.ai_view_str);
-      } catch {
-        alert("AI用のJSONデータが無効です");
-        setLoading(false);
-        return;
-      }
-
       const payload = {
-        human_view: formData.narrative,
-        ai_view: aiViewJson,
-        topic_ids: formData.topic_ids,
+        human_view: narrative,
+        ai_view: parsedAiView,
+        topic_ids: selectedTopicIds,
+        // Mood is removed from input
       };
 
       const res = initialData
@@ -46,17 +72,16 @@ export function EntryForm({ topics, initialData }: Props) {
         : await createEntryAction(payload);
 
       if (!res.success) {
-        // Explicitly cast or access safely because TS inference can be tricky here
         const errorMsg = (res as { success: false; error: string }).error;
         throw new Error(errorMsg);
       }
 
-      // Success handled by revalidatePath in action, but we route to home
+      alert("記録しました");
       router.push("/");
       router.refresh();
-    } catch (e) {
+    } catch (e: any) {
       const msg =
-        e instanceof Error ? e.message : "記録の保存中にエラーが発生しました";
+        e instanceof Error ? e.message : "保存中にエラーが発生しました";
       alert(msg);
     } finally {
       setLoading(false);
@@ -64,105 +89,157 @@ export function EntryForm({ topics, initialData }: Props) {
   };
 
   const toggleTopic = (tid: string) => {
-    setFormData((prev) => {
-      const newIds = prev.topic_ids.includes(tid)
-        ? prev.topic_ids.filter((id) => id !== tid)
-        : [...prev.topic_ids, tid];
-      return { ...prev, topic_ids: newIds };
-    });
+    setSelectedTopicIds((prev) =>
+      prev.includes(tid) ? prev.filter((id) => id !== tid) : [...prev, tid]
+    );
   };
 
   return (
     <form
       onSubmit={handleSubmit}
-      style={{ display: "flex", flexDirection: "column", gap: "2rem" }}
+      style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}
     >
-      {/* Human View Input */}
-      <div>
+      {/* 1. Main Input (Focus) */}
+      <div style={{ position: "relative" }}>
         <label
-          style={{ display: "block", marginBottom: "0.5rem", fontWeight: 500 }}
+          style={{
+            display: "block",
+            marginBottom: "0.5rem",
+            fontWeight: 600,
+            fontSize: "0.9rem",
+            color: "var(--color-text)",
+          }}
         >
-          ナラティブ (人間用)
+          Human View (人間向けの文章)
         </label>
         <textarea
           required
-          value={formData.narrative}
-          onChange={(e) =>
-            setFormData({ ...formData, narrative: e.target.value })
-          }
+          autoFocus={!initialData}
+          value={narrative}
+          onChange={(e) => setNarrative(e.target.value)}
+          placeholder="今、頭の中にあることをそのまま書いてください..."
           style={{
             width: "100%",
             minHeight: "200px",
-            padding: "1rem",
-            lineHeight: 1.6,
+            padding: "1.5rem",
+            lineHeight: 1.8,
+            fontSize: "1.1rem",
             fontFamily: "var(--font-sans)",
+            border: "none",
+            borderRadius: "12px",
+            backgroundColor: "#fff",
+            boxShadow:
+              "0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03)",
+            resize: "vertical",
+            outline: "none",
+          }}
+        />
+        <div
+          style={{
+            position: "absolute",
+            bottom: "1rem",
+            right: "1rem",
+            fontSize: "0.8rem",
+            color: "var(--color-subtle)",
+          }}
+        >
+          {narrative.length}文字
+        </div>
+      </div>
+
+      {/* 2. AI Data Input (Optional) */}
+      <div>
+        <label
+          style={{
+            display: "block",
+            marginBottom: "0.5rem",
+            fontWeight: 600,
+            fontSize: "0.9rem",
+            color: "var(--color-text)",
+          }}
+        >
+          AI Knowledge (JSONデータ){" "}
+          <span style={{ fontWeight: 400, color: "var(--color-subtle)" }}>
+            ※任意
+          </span>
+        </label>
+        <textarea
+          value={aiJsonInput}
+          onChange={(e) => setAiJsonInput(e.target.value)}
+          placeholder={
+            '{\n  "ai_view": { ... }\n}\nまたは外部AIの出力JSONをそのまま貼り付け'
+          }
+          style={{
+            width: "100%",
+            minHeight: "120px",
+            padding: "1rem",
+            fontSize: "0.85rem",
+            fontFamily: "monospace",
             border: "1px solid var(--color-border)",
+            borderRadius: "8px",
+            backgroundColor: "#fafafa",
             resize: "vertical",
           }}
-          placeholder="ここに思考を記録してください..."
         />
-      </div>
-
-      {/* AI View Input */}
-      <div>
-        <label
-          style={{ display: "block", marginBottom: "0.5rem", fontWeight: 500 }}
-        >
-          構造化データ (AI用 JSON)
-        </label>
-        <textarea
-          required
-          value={formData.ai_view_str}
-          onChange={(e) =>
-            setFormData({ ...formData, ai_view_str: e.target.value })
-          }
+        <p
           style={{
-            width: "100%",
-            minHeight: "200px",
-            padding: "1rem",
-            fontFamily: "var(--font-mono)",
-            fontSize: "0.9rem",
-            border: "1px solid var(--color-border)",
-            backgroundColor: "#fafafa",
+            fontSize: "0.8rem",
+            color: "var(--color-subtle)",
+            marginTop: "0.3rem",
           }}
-        />
+        >
+          「AI向けプロンプト」を使って生成されたJSONをここに貼り付けると、分析精度が向上します。
+        </p>
       </div>
 
-      {/* Meta */}
+      {/* 3. Meta & Actions */}
       <div
         style={{
-          display: "grid",
-          gap: "1.5rem",
-          gridTemplateColumns: "1fr",
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "flex-start",
         }}
       >
-        <div>
-          <label
+        {/* Topics */}
+        <div style={{ maxWidth: "70%" }}>
+          <div
             style={{
-              display: "block",
-              marginBottom: "0.5rem",
-              fontWeight: 500,
+              display: "flex",
+              flexWrap: "wrap",
+              gap: "0.5rem",
+              alignItems: "center",
             }}
           >
-            トピック
-          </label>
-          <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem" }}>
+            <span
+              style={{
+                fontSize: "0.9rem",
+                color: "var(--color-subtle)",
+                marginRight: "0.5rem",
+              }}
+            >
+              トピック:
+            </span>
             {topics.map((t) => (
               <button
                 type="button"
                 key={t.id}
                 onClick={() => toggleTopic(t.id)}
                 style={{
-                  padding: "0.25rem 0.6rem",
+                  padding: "0.3rem 0.8rem",
                   fontSize: "0.85rem",
                   border: "1px solid",
-                  borderColor: formData.topic_ids.includes(t.id)
+                  borderColor: selectedTopicIds.includes(t.id)
                     ? "var(--color-accent-primary)"
-                    : "var(--color-border)",
-                  color: formData.topic_ids.includes(t.id)
+                    : "transparent",
+                  backgroundColor: selectedTopicIds.includes(t.id)
                     ? "var(--color-accent-primary)"
-                    : "inherit",
-                  borderRadius: "4px",
+                    : "#f0f0f0",
+                  color: selectedTopicIds.includes(t.id)
+                    ? "#fff"
+                    : "var(--color-text)",
+                  borderRadius: "20px",
+                  cursor: "pointer",
+                  transition: "all 0.2s",
                 }}
               >
                 {t.name}
@@ -170,30 +247,40 @@ export function EntryForm({ topics, initialData }: Props) {
             ))}
           </div>
         </div>
-      </div>
 
-      <div style={{ display: "flex", justifyContent: "flex-end", gap: "1rem" }}>
-        <button
-          type="button"
-          onClick={() => router.back()}
-          style={{ padding: "0.5rem 1rem", color: "var(--color-subtle)" }}
-        >
-          キャンセル
-        </button>
-        <button
-          type="submit"
-          disabled={loading}
-          style={{
-            padding: "0.6rem 1.2rem",
-            backgroundColor: "var(--color-text)",
-            color: "var(--color-base)",
-            borderRadius: "4px",
-            opacity: loading ? 0.7 : 1,
-            cursor: loading ? "wait" : "pointer",
-          }}
-        >
-          {loading ? "保存中..." : "保存"}
-        </button>
+        {/* Actions */}
+        <div style={{ display: "flex", gap: "1rem" }}>
+          <button
+            type="button"
+            onClick={() => router.back()}
+            style={{
+              padding: "0.8rem 1.5rem",
+              color: "var(--color-subtle)",
+              background: "transparent",
+              border: "none",
+              cursor: "pointer",
+            }}
+          >
+            キャンセル
+          </button>
+          <button
+            type="submit"
+            disabled={loading}
+            style={{
+              padding: "0.8rem 2rem",
+              backgroundColor: "var(--color-text)",
+              color: "var(--color-base)",
+              borderRadius: "30px",
+              fontWeight: 600,
+              border: "none",
+              opacity: loading ? 0.7 : 1,
+              cursor: loading ? "wait" : "pointer",
+              boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
+            }}
+          >
+            {loading ? "保存中..." : "保存する"}
+          </button>
+        </div>
       </div>
     </form>
   );

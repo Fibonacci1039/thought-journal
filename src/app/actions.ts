@@ -68,7 +68,40 @@ export async function createEntryAction(
   entry: Omit<Entry, "id" | "created_at" | "updated_at">
 ) {
   try {
-    const newEntry = await createEntry(entry);
+    // Post-processing: Calculate Time Bucket for Meta Layer
+    const now = new Date();
+    // Simple ISO week calculation
+    const d = new Date(
+      Date.UTC(now.getFullYear(), now.getMonth(), now.getDate())
+    );
+    const dayNum = d.getUTCDay() || 7;
+    d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+    const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+    const weekNo = Math.ceil(
+      ((d.getTime() - yearStart.getTime()) / 86400000 + 1) / 7
+    );
+
+    // YYYY-MM-DD
+    const day = now.toISOString().split("T")[0];
+    // YYYY-MM
+    const month = day.slice(0, 7);
+    // YYYY-Www
+    const week = `${d.getUTCFullYear()}-W${String(weekNo).padStart(2, "0")}`;
+
+    // Construct Meta
+    const metaPayload = {
+      ...entry.meta,
+      time_bucket: {
+        day,
+        week,
+        month,
+      },
+    };
+
+    const newEntry = await createEntry({
+      ...entry,
+      meta: metaPayload,
+    });
     revalidatePath("/"); // Home page usually lists entries
     return { success: true, data: newEntry };
   } catch (e) {

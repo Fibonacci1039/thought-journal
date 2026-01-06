@@ -55,6 +55,8 @@ export function EntryList({ entries }: { entries: Entry[] }) {
                 marginBottom: "1rem",
                 fontFamily: "var(--font-mono)",
                 letterSpacing: "0.05em",
+                borderBottom: "1px solid var(--color-border)", // Added divider for clarity
+                paddingBottom: "0.5rem",
               }}
             >
               {formatDateHeader(groupEntries[0].created_at)}
@@ -65,49 +67,64 @@ export function EntryList({ entries }: { entries: Entry[] }) {
               style={{
                 display: "flex",
                 flexDirection: "column",
-                gap: "1.5rem",
+                gap: "1rem", // Tighter gap
               }}
             >
-              {groupEntries.map((entry) => (
-                <Link
-                  key={entry.id}
-                  href={`/entry/${entry.id}`}
-                  style={{
-                    display: "block",
-                    textDecoration: "none",
-                    color: "inherit",
-                    // No border, just whitespace validation
-                  }}
-                >
-                  <div
+              {groupEntries.map((entry) => {
+                // Determine display text: Use AI summary if available, else narrative
+                const summary = (entry.ai_view as any)?.summary;
+                const displayText =
+                  summary && summary.length > 0
+                    ? summary
+                    : entry.human_view || "無題の記録";
+
+                return (
+                  <Link
+                    key={entry.id}
+                    href={`/entry/${entry.id}`}
                     style={{
-                      fontSize: "1rem",
-                      lineHeight: "1.6",
-                      marginBottom: "0.25rem",
-                      display: "-webkit-box",
-                      WebkitLineClamp: 2,
-                      WebkitBoxOrient: "vertical",
-                      overflow: "hidden",
+                      display: "block",
+                      textDecoration: "none",
+                      color: "inherit",
+                      padding: "0.5rem 0", // Clickable area
                     }}
                   >
-                    {/* Truncated human view logic is handled by CSS line-clamp above, 
-                        but we provide just the text here. */}
-                    {entry.human_view || "無題の記録"}
-                  </div>
-
-                  {/* Subtle Topic Count */}
-                  {entry.topic_ids.length > 0 && (
                     <div
                       style={{
-                        fontSize: "0.8rem",
-                        color: "var(--color-subtle)",
+                        display: "flex",
+                        alignItems: "baseline",
+                        gap: "0.75rem",
                       }}
                     >
-                      {entry.topic_ids.length} topics
+                      {/* Bullet / Mood Indicator */}
+                      <div
+                        style={{
+                          fontSize: "0.85rem",
+                          color: "var(--color-subtle)",
+                          minWidth: "24px",
+                          textAlign: "center",
+                        }}
+                      >
+                        {entry.mood ? `[${entry.mood}]` : "•"}
+                      </div>
+
+                      {/* Content */}
+                      <div
+                        style={{
+                          fontSize: "1rem",
+                          lineHeight: "1.6",
+                          flexGrow: 1,
+                          overflow: "hidden",
+                          whiteSpace: "nowrap", // Single line summary
+                          textOverflow: "ellipsis",
+                        }}
+                      >
+                        {displayText}
+                      </div>
                     </div>
-                  )}
-                </Link>
-              ))}
+                  </Link>
+                );
+              })}
             </div>
           </div>
         );
