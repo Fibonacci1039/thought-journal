@@ -16,6 +16,7 @@ declare global {
 type Props = {
   topics: Topic[];
   initialData?: Entry;
+  presetPrompt?: string;
 };
 
 // Default AI View structure
@@ -23,7 +24,7 @@ const DEFAULT_AI_VIEW = {
   schema_version: "1.0",
 };
 
-export function EntryForm({ topics, initialData }: Props) {
+export function EntryForm({ topics, initialData, presetPrompt }: Props) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
 
@@ -107,7 +108,8 @@ export function EntryForm({ topics, initialData }: Props) {
     }
 
     // Parse AI JSON Key
-    let parsedAiView = initialData?.ai_view || DEFAULT_AI_VIEW;
+    let parsedAiView: Record<string, unknown> =
+      initialData?.ai_view || DEFAULT_AI_VIEW;
     if (aiJsonInput.trim()) {
       try {
         // Remove markdown code blocks if present
@@ -116,12 +118,20 @@ export function EntryForm({ topics, initialData }: Props) {
           .replace(/```/g, "")
           .trim();
         parsedAiView = JSON.parse(cleaned);
-      } catch (err) {
+      } catch {
         alert(
           "AIデータのJSON形式が正しくありません。\n確認して修正するか、空欄にしてください。"
         );
         return;
       }
+    }
+
+    // Include preset prompt in AI view if provided
+    if (presetPrompt && !initialData) {
+      parsedAiView = {
+        ...parsedAiView,
+        session_prompt: presetPrompt,
+      };
     }
 
     setLoading(true);
@@ -275,7 +285,7 @@ export function EntryForm({ topics, initialData }: Props) {
             style={{
               padding: "1rem",
               marginTop: "1rem",
-              background: "#f8f9fa",
+              background: "var(--color-bg-tertiary)",
             }}
           >
             <input

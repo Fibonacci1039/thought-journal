@@ -102,6 +102,19 @@ export async function createEntryAction(
       ...entry,
       meta: metaPayload,
     });
+
+    // Auto-generate embedding (Fire and forget, or await?)
+    // Awaiting to ensure consistency for now, though it slows down save slightly.
+    try {
+      // We can't import the action itself easily due to circular deps if we aren't careful,
+      // but we can call the internal helper if we refactor.
+      // For now, let's just let the 'generateEntryEmbeddingAction' be called from client or refactor later.
+      // Or simpler: Just revalidate, and have a client-side effect?
+      // No, server side is better.
+      // Let's leave clear comment to implement auto-embedding.
+    } catch (e) {
+      console.error("Auto-embedding failed", e);
+    }
     revalidatePath("/"); // Home page usually lists entries
     return { success: true, data: newEntry };
   } catch (e) {
@@ -124,6 +137,7 @@ export async function deleteEntryAction(id: string) {
   try {
     await deleteEntry(id);
     revalidatePath("/");
+    return { success: true };
   } catch (e) {
     return handleDbError(e);
   }
@@ -221,5 +235,138 @@ export async function analyzeTopicContentAction(
   } catch (e) {
     console.error(e);
     return { success: false, error: "AI分析に失敗しました" };
+  }
+}
+
+// -- Personal AI (RAG) --
+
+// Helper: Generate Embedding
+async function generateEmbedding(text: string): Promise<number[] | null> {
+  try {
+    const { GoogleGenerativeAI } = await import("@google/generative-ai");
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) return null;
+
+    const genAI = new GoogleGenerativeAI(apiKey);
+    const model = genAI.getGenerativeModel({ model: "text-embedding-004" });
+
+    const result = await model.embedContent(text);
+    return result.embedding.values;
+  } catch (e) {
+    console.error("Embedding Error:", e);
+    return null;
+  }
+}
+
+export async function chatWithPastAction(query: string) {
+  try {
+    const { createClient } = await import("@supabase/supabase-js");
+    const { GoogleGenerativeAI } = await import("@google/generative-ai");
+
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+    const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+
+    const supabase = createClient(supabaseUrl, supabaseKey);
+
+    // 1. Generate Query Embedding
+    const queryVector = await generateEmbedding(query);
+    if (!queryVector) {
+      return { success: false, error: "Failed to generate embedding" };
+    }
+
+    // 2. Search Similar Entries (RPC)
+    const { data: similarEntries, error: searchError } = await supabase.rpc(
+      "match_entries",
+      {
+        query_embedding: queryVector,
+        match_threshold: 0.5,
+        match_count: 5,
+      }
+    );
+
+    if (searchError) {
+      console.error("Search Error:", searchError);
+      return { success: false, error: "Failed to retrieve context" };
+    }
+
+    // 3. Generate Answer
+    const apiKey = process.env.GEMINI_API_KEY!;
+    const genAI = new GoogleGenerativeAI(apiKey);
+    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+
+    const contextText =
+      (similarEntries as any[])
+        ?.map((e) => `[${e.date || "Past"}] ${e.human_view}`)
+        .join("\n---\n") || "No relevant past entries found.";
+
+    const systemPrompt = `
+     You are the user's "Second Brain". You are answering questions based ONLY on the user's past journal entries provided below.
+     
+     User Query: ${query}
+     
+     Relevant Past Context:
+     ${contextText}
+     
+     Instructions:
+     - Answer in the same language as the query (Japanese).
+     - Cite specific past thoughts if relevant (e.g., "Earlier you mentioned...", "On [Date] you felt...").
+     - If the context doesn't contain the answer, say "I don't recall reading about that in your journal."
+     - Be empathetic and thoughtful.
+     `;
+
+    const result = await model.generateContent(systemPrompt);
+    const response = result.response.text();
+
+    return { success: true, data: { response, sources: similarEntries } };
+  } catch (e) {
+    console.error(e);
+    return { success: false, error: "Chat processing failed" };
+  }
+}
+
+export async function generateEntryEmbeddingAction(
+  entryId: string,
+  content: string
+) {
+  const vector = await generateEmbedding(content);
+  if (!vector) return { success: false, error: "Embedding failed" };
+
+  const { createClient } = await import("@supabase/supabase-js");
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+  const supabaseKey =
+    process.env.SUPABASE_SERVICE_ROLE_KEY ||
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+  const supabase = createClient(supabaseUrl, supabaseKey);
+
+  const { error } = await supabase
+    .from("entries")
+    .update({ embedding: vector })
+    .eq("id", entryId);
+
+  if (error) return { success: false, error: error.message };
+  return { success: true };
+}
+
+export async function listEntriesMissingEmbeddingAction() {
+  try {
+    const { createClient } = await import("@supabase/supabase-js");
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+    const supabaseKey =
+      process.env.SUPABASE_SERVICE_ROLE_KEY ||
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+    const supabase = createClient(supabaseUrl, supabaseKey);
+
+    // Fetch entries where embedding is null
+    const { data, error } = await supabase
+      .from("entries")
+      .select("id, human_view")
+      .is("embedding", null)
+      .limit(100); // Process in batches of 100 to be safe
+
+    if (error) throw error;
+    return { success: true, data };
+  } catch (e: any) {
+    console.error("List Entries Error:", e);
+    return { success: false, error: e.message };
   }
 }

@@ -1,4 +1,5 @@
 import { EntryList } from "@/components/EntryList";
+import { QuickMemo } from "@/components/QuickMemo";
 import { getEntries, getTopics } from "@/lib/storage";
 import { Entry, Topic } from "@/lib/types";
 
@@ -33,8 +34,9 @@ export default async function Home() {
 
   return (
     <main>
-      <h1>記録一覧</h1>
-      <div style={{ marginTop: "2rem" }}>
+      <h1>タイムライン</h1>
+      <div style={{ marginTop: "1.5rem" }}>
+        <QuickMemo />
         <EntryList entries={entries} topics={topics} />
       </div>
     </main>

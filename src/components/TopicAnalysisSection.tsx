@@ -386,9 +386,11 @@ export function TopicAnalysisSection({
               fontSize: "0.8rem",
               padding: "0.5rem",
               borderRadius: "4px",
-              border: "1px solid #ccc",
+              border: "1px solid var(--color-border)",
               marginBottom: "1rem",
               fontFamily: "monospace",
+              background: "var(--color-bg-primary)",
+              color: "var(--color-text-primary)",
             }}
           />
           <div style={{ display: "flex", gap: "1rem" }}>
@@ -398,8 +400,9 @@ export function TopicAnalysisSection({
                 flex: 1,
                 padding: "0.6rem",
                 borderRadius: "4px",
-                border: "1px solid var(--color-text)",
-                background: "#fff",
+                border: "1px solid var(--color-border)",
+                background: "var(--color-bg-tertiary)",
+                color: "var(--color-text-primary)",
                 cursor: "pointer",
               }}
             >
@@ -445,9 +448,11 @@ export function TopicAnalysisSection({
               fontSize: "0.8rem",
               padding: "0.5rem",
               borderRadius: "4px",
-              border: "1px solid #ccc",
+              border: "1px solid var(--color-border)",
               marginBottom: "1rem",
               fontFamily: "monospace",
+              background: "var(--color-bg-primary)",
+              color: "var(--color-text-primary)",
             }}
           />
           <div style={{ display: "flex", gap: "1rem" }}>
@@ -457,8 +462,9 @@ export function TopicAnalysisSection({
                 flex: 1,
                 padding: "0.6rem",
                 borderRadius: "4px",
-                border: "none",
-                background: "#eee",
+                border: "1px solid var(--color-border)",
+                background: "var(--color-bg-tertiary)",
+                color: "var(--color-text-secondary)",
                 cursor: "pointer",
               }}
             >

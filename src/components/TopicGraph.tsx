@@ -19,6 +19,13 @@ import { Topic, Entry } from "@/lib/types";
 import { useRouter } from "next/navigation";
 import { DetailPanel } from "./DetailPanel";
 import { analyzeTopicContentAction } from "@/app/actions";
+import {
+  Brain,
+  ChevronRight,
+  ChevronDown,
+  Sparkles,
+  Calendar,
+} from "lucide-react";
 
 // --- Layout Utilities (Dagre) ---
 
@@ -165,7 +172,20 @@ export function TopicGraph({ topics, entries }: Props) {
     rawNodes.push({
       id: "root",
       type: "input",
-      data: { label: "Journal 🧠" },
+      data: {
+        label: (
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: "8px",
+            }}
+          >
+            Journal <Brain size={16} />
+          </div>
+        ),
+      },
       position: { x: 0, y: 0 },
       style: {
         background: "#fff",
@@ -186,9 +206,33 @@ export function TopicGraph({ topics, entries }: Props) {
       rawNodes.push({
         id: `topic-${topic.id}`,
         data: {
-          label: `${topic.name} ${
-            hasEntries ? (isCollapsed ? "➕" : "➖") : ""
-          }`,
+          label: (
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                gap: "4px",
+              }}
+            >
+              <span>{topic.name}</span>
+              {hasEntries && (
+                <span
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    color: "var(--color-text-tertiary)",
+                  }}
+                >
+                  {isCollapsed ? (
+                    <ChevronRight size={14} />
+                  ) : (
+                    <ChevronDown size={14} />
+                  )}
+                </span>
+              )}
+            </div>
+          ),
         },
         position: { x: 0, y: 0 },
         style: {
@@ -457,7 +501,9 @@ export function TopicGraph({ topics, entries }: Props) {
             cursor: "pointer",
           }}
         >
-          ✨ Date
+          <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
+            <Calendar size={14} /> Date
+          </div>
         </button>
         <button
           onClick={() => setGroupingMode("ai")}
@@ -479,7 +525,7 @@ export function TopicGraph({ topics, entries }: Props) {
             gap: "4px",
           }}
         >
-          🔮 AI {isAnalyzing && "..."}
+          <Sparkles size={14} /> AI {isAnalyzing && "..."}
         </button>
       </div>
 

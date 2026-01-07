@@ -10,14 +10,18 @@ export type Meta = {
   importance?: 1 | 2 | 3;
 };
 
+export type EntryType = "journal" | "quick_memo" | "quote" | "idea";
+
 export type Entry = {
   id: string; // UUID
   created_at: string; // ISO string
   updated_at: string; // ISO string
+  entry_type?: EntryType; // エントリの種類
   title?: string | null; // Optional title
   human_view: string; // pure text
   ai_view: Record<string, unknown>; // JSONB (Knowledge Layer)
   topic_ids: string[]; // UUID[] (Relational)
+  tags?: string[]; // タグ（文字列配列）
   mood?: string | null; // Deprecated but kept for compatibility
   meta?: Meta; // Meta Index Layer
   // Reference Capture
