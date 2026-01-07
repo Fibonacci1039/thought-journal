@@ -195,8 +195,14 @@ export function DetailPanel({ nodeId, nodeType, data, onClose }: Props) {
                   🤖 AI Analysis
                 </h4>
                 <p style={{ margin: 0, color: "var(--color-text-secondary)" }}>
-                  {/* Display a snippet of AI view if available, safely */}
-                  {(data as Entry).ai_view.current_status || "データなし"}
+                  {
+                    /* Display a snippet of AI view if available, safely */
+                    typeof (data as Entry).ai_view?.current_status === "string"
+                      ? ((data as Entry).ai_view.current_status as string)
+                      : JSON.stringify(
+                          (data as Entry).ai_view?.current_status
+                        ) || "データなし"
+                  }
                 </p>
               </div>
             )}
