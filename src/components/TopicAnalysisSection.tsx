@@ -80,6 +80,9 @@ export function TopicAnalysisSection({
 
   // If we have data and are in IDLE mode, show dashboard
   if (hasData && mode === "IDLE") {
+    // Check if it's a Weekly Review schema
+    const isWeekly = !!data.theme;
+
     return (
       <section style={{ marginBottom: "4rem" }}>
         <div
@@ -99,27 +102,22 @@ export function TopicAnalysisSection({
               gap: "0.5rem",
             }}
           >
-            <span style={{ fontSize: "1.5rem" }}>📈</span>
-            変化とインサイト
+            <span style={{ fontSize: "1.5rem" }}>{isWeekly ? "🗓️" : "📈"}</span>
+            {isWeekly ? "週次インサイト" : "変化とインサイト"}
           </h2>
           <button
-            onClick={
-              () =>
-                setMode(
-                  "IDLE"
-                ) /* Just reset if needed, but actually trigger start */
-            }
+            onClick={() => setMode("IDLE")}
             onClickCapture={() => {
               setMode("IDLE");
               handleGeneratePrompt();
-            }} // Quick hack to re-run
+            }}
             disabled={loading}
             style={{
               fontSize: "0.85rem",
               fontWeight: 600,
               padding: "0.5rem 1rem",
-              color: "var(--color-accent-primary)",
-              backgroundColor: "#f0f7ff",
+              color: "#fff",
+              backgroundColor: "var(--color-accent-primary)",
               border: "none",
               borderRadius: "20px",
               cursor: loading ? "wait" : "pointer",
@@ -129,7 +127,7 @@ export function TopicAnalysisSection({
           </button>
         </div>
 
-        {/* Dashboard Cards reused */}
+        {/* Dashboard Cards */}
         <div
           style={{
             display: "grid",
@@ -138,82 +136,146 @@ export function TopicAnalysisSection({
             marginBottom: "1.5rem",
           }}
         >
-          {/* Status */}
-          <div
-            style={{
-              padding: "1.5rem",
-              borderRadius: "12px",
-              background: "#fff",
-              border: "1px solid var(--color-border)",
-              boxShadow: "0 2px 8px rgba(0,0,0,0.04)",
-            }}
-          >
-            <div
-              style={{
-                fontSize: "0.85rem",
-                color: "var(--color-subtle)",
-                marginBottom: "0.5rem",
-              }}
-            >
-              今の状態
-            </div>
-            <div
-              style={{
-                fontSize: "1.4rem",
-                fontWeight: 700,
-                color: "var(--color-text)",
-              }}
-            >
-              {data.current_status || "不明"}
-            </div>
-            <div
-              style={{
-                marginTop: "0.8rem",
-                fontSize: "0.95rem",
-                lineHeight: 1.5,
-              }}
-            >
-              <span style={{ fontWeight: 600 }}>理由:</span>{" "}
-              {data.reason || "-"}
-            </div>
-          </div>
-          {/* Question */}
-          <div
-            style={{
-              padding: "1.5rem",
-              borderRadius: "12px",
-              background: "#fff",
-              border: "1px solid var(--color-border)",
-              boxShadow: "0 2px 8px rgba(0,0,0,0.04)",
-            }}
-          >
-            <div
-              style={{
-                fontSize: "0.85rem",
-                color: "var(--color-subtle)",
-                marginBottom: "0.5rem",
-              }}
-            >
-              次の問い
-            </div>
-            <div
-              style={{
-                fontSize: "1.1rem",
-                fontWeight: 600,
-                marginBottom: "0.8rem",
-              }}
-            >
-              {data.next_question ? `「${data.next_question}」` : "-"}
-            </div>
-          </div>
+          {isWeekly ? (
+            // --- WEEKLY REVIEW VIEW ---
+            <>
+              <div
+                style={{
+                  borderRadius: "12px",
+                  background: "var(--color-bg-tertiary)",
+                  border: "1px solid var(--color-border)",
+                  boxShadow: "0 2px 8px rgba(0,0,0,0.04)",
+                  gridColumn: "1 / -1", // Full width
+                  color: "var(--color-text-primary)",
+                }}
+              >
+                <div
+                  style={{
+                    fontSize: "0.85rem",
+                    color: "var(--color-subtle)",
+                    marginBottom: "0.5rem",
+                  }}
+                >
+                  今週のテーマ
+                </div>
+                <div
+                  style={{
+                    fontSize: "1.4rem",
+                    fontWeight: 700,
+                    color: "var(--color-text)",
+                    marginBottom: "1rem",
+                  }}
+                >
+                  {data.theme}
+                </div>
+                <div style={{ lineHeight: 1.6, fontSize: "0.95rem" }}>
+                  {data.insight_text}
+                </div>
+              </div>
+
+              <div
+                style={{
+                  padding: "1.5rem",
+                  borderRadius: "12px",
+                  background: "var(--color-bg-tertiary)", // Slightly different bg
+                  border: "1px solid var(--color-border)",
+                  gridColumn: "1 / -1",
+                }}
+              >
+                <div
+                  style={{
+                    fontSize: "0.9rem",
+                    fontWeight: 600,
+                    marginBottom: "0.5rem",
+                    color: "#d2691e",
+                  }}
+                >
+                  🚀 Next Week's Focus
+                </div>
+                <div>{data.action_item || "-"}</div>
+              </div>
+            </>
+          ) : (
+            // --- STANDARD ANALYSIS VIEW ---
+            <>
+              {/* Status */}
+              <div
+                style={{
+                  padding: "1.5rem",
+                  borderRadius: "12px",
+                  background: "var(--color-bg-tertiary)",
+                  border: "1px solid var(--color-border)",
+                  boxShadow: "0 2px 8px rgba(0,0,0,0.04)",
+                }}
+              >
+                <div
+                  style={{
+                    fontSize: "0.85rem",
+                    color: "var(--color-subtle)",
+                    marginBottom: "0.5rem",
+                  }}
+                >
+                  今の状態
+                </div>
+                <div
+                  style={{
+                    fontSize: "1.4rem",
+                    fontWeight: 700,
+                    color: "var(--color-text)",
+                  }}
+                >
+                  {data.current_status || "不明"}
+                </div>
+                <div
+                  style={{
+                    marginTop: "0.8rem",
+                    fontSize: "0.95rem",
+                    lineHeight: 1.5,
+                  }}
+                >
+                  <span style={{ fontWeight: 600 }}>理由:</span>{" "}
+                  {data.reason || "-"}
+                </div>
+              </div>
+              {/* Question */}
+              <div
+                style={{
+                  padding: "1.5rem",
+                  borderRadius: "12px",
+                  background: "var(--color-bg-tertiary)",
+                  border: "1px solid var(--color-border)",
+                  boxShadow: "0 2px 8px rgba(0,0,0,0.04)",
+                }}
+              >
+                <div
+                  style={{
+                    fontSize: "0.85rem",
+                    color: "var(--color-subtle)",
+                    marginBottom: "0.5rem",
+                  }}
+                >
+                  次の問い
+                </div>
+                <div
+                  style={{
+                    fontSize: "1.1rem",
+                    fontWeight: 600,
+                    marginBottom: "0.8rem",
+                  }}
+                >
+                  {data.next_question ? `「${data.next_question}」` : "-"}
+                </div>
+              </div>
+            </>
+          )}
         </div>
 
-        {/* Trends */}
-        {data.trends && data.trends.length > 0 && (
+        {/* Trends (Only for Standard Mode usually, but checking anyway) */}
+        {!isWeekly && data.trends && data.trends.length > 0 && (
           <div
             style={{
               padding: "1.5rem",
-              backgroundColor: "#fafafa",
+              backgroundColor: "var(--color-bg-tertiary)",
               borderRadius: "12px",
               border: "1px dashed var(--color-border)",
             }}
@@ -227,7 +289,7 @@ export function TopicAnalysisSection({
                   <span
                     style={{
                       fontSize: "0.9rem",
-                      color: "#666",
+                      color: "var(--color-text-tertiary)",
                       marginRight: "0.5rem",
                     }}
                   >
@@ -259,7 +321,7 @@ export function TopicAnalysisSection({
       style={{
         marginBottom: "3rem",
         padding: "1.5rem",
-        backgroundColor: "#f9f9f9",
+        backgroundColor: "var(--color-bg-tertiary)",
         borderRadius: "8px",
         border: "1px solid var(--color-border)",
       }}

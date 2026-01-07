@@ -100,7 +100,7 @@ export function WeeklyAnalysisSection() {
         marginTop: "2rem",
         padding: "1.5rem",
         borderRadius: "12px",
-        backgroundColor: "#fff",
+        backgroundColor: "var(--color-bg-tertiary)",
         border: "1px solid var(--color-border)",
       }}
     >
@@ -113,7 +113,7 @@ export function WeeklyAnalysisSection() {
           gap: "0.5rem",
         }}
       >
-        <span>📮</span> 週刊インサイト・レター
+        <span>📝</span> 週次レビュー (AI Analysis)
       </h3>
 
       <p
@@ -124,9 +124,7 @@ export function WeeklyAnalysisSection() {
           marginBottom: "1.5rem",
         }}
       >
-        過去1週間のログをAI編集者に渡し、あなたへの「週刊レター」を書いてもらいましょう。
-        <br />
-        隠れた感情や小さな前進を発見できます。
+        過去1週間のログをAIが集計し、振り返りと次週の指針を提案します。
       </p>
 
       {/* Step 1: Generate */}
@@ -137,16 +135,28 @@ export function WeeklyAnalysisSection() {
           style={{
             width: "100%",
             padding: "1rem",
-            backgroundColor: "var(--color-text)",
+            backgroundColor: "var(--color-accent)", // Orange for visibility
             color: "#fff",
             border: "none",
             borderRadius: "8px",
             fontSize: "1rem",
             fontWeight: 600,
             cursor: loading ? "wait" : "pointer",
+            boxShadow: "0 2px 8px rgba(255, 159, 10, 0.2)", // Subtler glow
+            transition: "all 0.2s ease",
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.transform = "translateY(-1px)";
+            e.currentTarget.style.boxShadow =
+              "0 4px 12px rgba(255, 159, 10, 0.3)";
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.transform = "none";
+            e.currentTarget.style.boxShadow =
+              "0 2px 8px rgba(255, 159, 10, 0.2)";
           }}
         >
-          {loading ? "データを収集中..." : "今週のレターを発行する"}
+          {loading ? "データを収集中..." : "週次レビューを開始する"}
         </button>
       )}
 
@@ -190,10 +200,10 @@ export function WeeklyAnalysisSection() {
                 padding: "0.8rem",
                 fontSize: "0.8rem",
                 fontFamily: "monospace",
-                color: "var(--color-subtle)",
+                color: "var(--color-text-primary)",
                 border: "1px solid var(--color-border)",
                 borderRadius: "8px",
-                backgroundColor: "#f9f9f9",
+                backgroundColor: "#1c1c1e",
                 resize: "vertical",
               }}
             />
@@ -230,6 +240,8 @@ export function WeeklyAnalysisSection() {
                 height: "150px",
                 padding: "1rem",
                 fontSize: "0.9rem",
+                color: "var(--color-text-primary)",
+                backgroundColor: "#1c1c1e",
                 fontFamily: "monospace",
                 border: "1px solid var(--color-border)",
                 borderRadius: "8px",

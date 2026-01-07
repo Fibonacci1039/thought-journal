@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Entry, Topic } from "@/lib/types";
 import { createEntryAction, updateEntryAction } from "@/app/actions";
+import { Mic, MicOff, Book, Save } from "lucide-react";
 
 // Extend Window for Speech API
 declare global {
@@ -32,6 +33,13 @@ export function EntryForm({ topics, initialData }: Props) {
   const [selectedTopicIds, setSelectedTopicIds] = useState<string[]>(
     initialData?.topic_ids || []
   );
+
+  // Reference Capture State
+  const [isReferenceMode, setIsReferenceMode] = useState(
+    !!(initialData?.source_url || initialData?.cite_text)
+  );
+  const [sourceUrl, setSourceUrl] = useState(initialData?.source_url || "");
+  const [citeText, setCiteText] = useState(initialData?.cite_text || "");
 
   // Voice Input State
   const [isListening, setIsListening] = useState(false);
@@ -124,6 +132,8 @@ export function EntryForm({ topics, initialData }: Props) {
         human_view: narrative,
         ai_view: parsedAiView,
         topic_ids: selectedTopicIds,
+        source_url: sourceUrl,
+        cite_text: citeText,
         // Mood is removed from input
       };
 
@@ -143,7 +153,6 @@ export function EntryForm({ topics, initialData }: Props) {
       const msg =
         e instanceof Error ? e.message : "保存中にエラーが発生しました";
       alert(msg);
-    } finally {
       setLoading(false);
     }
   };
@@ -157,250 +166,243 @@ export function EntryForm({ topics, initialData }: Props) {
   return (
     <form
       onSubmit={handleSubmit}
-      style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}
+      className="animate-enter"
+      style={{
+        maxWidth: "700px",
+        margin: "0 auto",
+        display: "flex",
+        flexDirection: "column",
+        gap: "2rem",
+      }}
     >
-      {/* 0. Title Input */}
-      <div>
+      {/* 1. Header: Date & Title */}
+      <div style={{ textAlign: "center" }}>
+        <p className="text-label" style={{ marginBottom: "0.5rem" }}>
+          {new Date().toLocaleDateString("ja-JP", {
+            weekday: "long",
+            month: "long",
+            day: "numeric",
+          })}
+        </p>
         <input
           type="text"
           value={title}
           onChange={(e) => setTitle(e.target.value)}
-          placeholder="タイトル (任意)"
+          placeholder="タイトルを入力..."
           style={{
             width: "100%",
-            padding: "1rem 0",
-            fontSize: "1.5rem",
+            textAlign: "center",
+            fontSize: "2rem",
             fontWeight: 700,
             border: "none",
-            borderBottom: "1px solid var(--color-border)",
             outline: "none",
-            backgroundColor: "transparent",
+            background: "transparent",
             color: "var(--color-heading)",
+            fontFamily: "var(--font-sans)",
+            letterSpacing: "-0.02em",
           }}
         />
       </div>
 
-      {/* 1. Main Input (Focus) */}
+      {/* 2. Zen Editor "Paper" */}
       <div style={{ position: "relative" }}>
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "baseline",
-            marginBottom: "0.5rem",
-          }}
-        >
-          <label
-            style={{
-              fontWeight: 600,
-              fontSize: "0.9rem",
-              color: "var(--color-text)",
-            }}
-          >
-            Human View (人間向けの文章)
-          </label>
-          <button
-            type="button"
-            onClick={toggleListening}
-            style={{
-              border: "none",
-              background: isListening ? "var(--color-accent-primary)" : "#eee",
-              color: isListening ? "#fff" : "var(--color-text)",
-              borderRadius: "20px",
-              padding: "0.4rem 1rem",
-              fontSize: "0.85rem",
-              cursor: "pointer",
-              display: "flex",
-              alignItems: "center",
-              gap: "0.5rem",
-              transition: "all 0.2s",
-            }}
-          >
-            <span>{isListening ? "■ 停止" : "🎙️ 音声入力"}</span>
-          </button>
-        </div>
-
         <textarea
           required
           autoFocus={!initialData}
           value={narrative}
           onChange={(e) => setNarrative(e.target.value)}
-          placeholder={
-            isListening
-              ? "お話しください..."
-              : "今、頭の中にあることをそのまま書いてください..."
-          }
+          placeholder="今、何を考えていますか？"
           style={{
             width: "100%",
-            minHeight: "200px",
-            padding: "1.5rem",
+            minHeight: "400px",
             lineHeight: 1.8,
-            fontSize: "1.1rem",
+            fontSize: "1.15rem", // Slightly larger for comfortable writing
             fontFamily: "var(--font-sans)",
-            border: isListening
-              ? "2px solid var(--color-accent-primary)"
-              : "none",
-            borderRadius: "12px",
-            backgroundColor: "#fff",
-            boxShadow:
-              "0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03)",
-            resize: "vertical",
+            border: "none",
             outline: "none",
-            transition: "border 0.2s",
+            resize: "none",
+            backgroundColor: "transparent", // Blend into the page like Reflection.app
+            color: "var(--color-text-primary)",
           }}
         />
+
+        {/* Floating Controls (Voice / Ref) - Subtle */}
         <div
           style={{
             position: "absolute",
-            bottom: "1rem",
-            right: "1rem",
-            fontSize: "0.8rem",
-            color: "var(--color-subtle)",
+            top: "-2rem",
+            right: "0",
+            display: "flex",
+            gap: "1rem",
+            opacity: 0.6,
+            transition: "opacity 0.2s",
           }}
+          onMouseEnter={(e) => (e.currentTarget.style.opacity = "1")}
+          onMouseLeave={(e) => (e.currentTarget.style.opacity = "0.6")}
         >
-          {narrative.length}文字
+          <button
+            type="button"
+            onClick={toggleListening}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "0.3rem",
+              fontSize: "0.9rem",
+              cursor: "pointer",
+            }}
+            title={isListening ? "音声入力を停止" : "音声入力を開始"}
+          >
+            {isListening ? (
+              <MicOff size={18} color="#ef4444" />
+            ) : (
+              <Mic size={18} />
+            )}
+          </button>
+          <button
+            type="button"
+            onClick={() => setIsReferenceMode(!isReferenceMode)}
+            style={{ fontSize: "0.9rem", cursor: "pointer" }}
+            title="参考文献・引用を追加"
+          >
+            <Book size={18} />
+          </button>
         </div>
+
+        {/* Reference Panel (Conditional) */}
+        {isReferenceMode && (
+          <div
+            className="glass-card"
+            style={{
+              padding: "1rem",
+              marginTop: "1rem",
+              background: "#f8f9fa",
+            }}
+          >
+            <input
+              type="url"
+              value={sourceUrl}
+              onChange={(e) => setSourceUrl(e.target.value)}
+              placeholder="参考URL (https://...)"
+              className="input-field"
+              style={{
+                marginBottom: "0.5rem",
+                fontSize: "0.9rem",
+                padding: "0.5rem",
+              }}
+            />
+            <textarea
+              value={citeText}
+              onChange={(e) => setCiteText(e.target.value)}
+              placeholder="引用テキストやメモ..."
+              style={{
+                width: "100%",
+                border: "1px solid var(--color-border)",
+                borderRadius: "8px",
+                padding: "0.5rem",
+              }}
+            />
+          </div>
+        )}
       </div>
 
-      {/* 2. AI Data Input (Optional) */}
-      <div>
-        <label
-          style={{
-            display: "block",
-            marginBottom: "0.5rem",
-            fontWeight: 600,
-            fontSize: "0.9rem",
-            color: "var(--color-text)",
-          }}
-        >
-          AI Knowledge (JSONデータ){" "}
-          <span style={{ fontWeight: 400, color: "var(--color-subtle)" }}>
-            ※任意
-          </span>
-        </label>
-        <textarea
-          value={aiJsonInput}
-          onChange={(e) => setAiJsonInput(e.target.value)}
-          placeholder={
-            '{\n  "ai_view": { ... }\n}\nまたは外部AIの出力JSONをそのまま貼り付け'
-          }
-          style={{
-            width: "100%",
-            minHeight: "120px",
-            padding: "1rem",
-            fontSize: "0.85rem",
-            fontFamily: "monospace",
-            border: "1px solid var(--color-border)",
-            borderRadius: "8px",
-            backgroundColor: "#fafafa",
-            resize: "vertical",
-          }}
-        />
-        <p
-          style={{
-            fontSize: "0.8rem",
-            color: "var(--color-subtle)",
-            marginTop: "0.3rem",
-          }}
-        >
-          「AI向けプロンプト」を使って生成されたJSONをここに貼り付けると、分析精度が向上します。
-        </p>
-      </div>
-
-      {/* 3. Meta & Actions */}
+      {/* 3. Footer Meta (Topics & Save) */}
       <div
         style={{
           display: "flex",
           justifyContent: "space-between",
-          alignItems: "flex-end", // Align bottom to keep buttons grounded
-          gap: "1rem",
+          alignItems: "center",
+          borderTop: "1px solid var(--color-border)",
+          paddingTop: "2rem",
+          marginTop: "2rem",
         }}
       >
-        {/* Topics */}
-        <div style={{ flex: 1, marginRight: "1rem" }}>
-          <div
-            style={{
-              display: "flex",
-              flexWrap: "wrap",
-              gap: "0.5rem",
-              alignItems: "center",
-            }}
-          >
-            <span
+        <div
+          style={{
+            display: "flex",
+            gap: "0.5rem",
+            flexWrap: "wrap",
+            maxWidth: "70%",
+          }}
+        >
+          {topics.map((t) => (
+            <button
+              type="button"
+              key={t.id}
+              onClick={() => toggleTopic(t.id)}
               style={{
-                fontSize: "0.9rem",
-                color: "var(--color-subtle)",
-                marginRight: "0.5rem",
+                fontSize: "0.8rem",
+                padding: "0.3rem 0.8rem",
+                borderRadius: "20px",
+                fontWeight: 500,
+                background: selectedTopicIds.includes(t.id)
+                  ? "rgba(255, 159, 10, 0.2)" // Orange Tint
+                  : "rgba(255,255,255,0.05)",
+                color: selectedTopicIds.includes(t.id)
+                  ? "var(--color-accent-primary)" // Orange Text
+                  : "var(--color-text-secondary)",
+                border: selectedTopicIds.includes(t.id)
+                  ? "1px solid var(--color-accent-primary)"
+                  : "1px solid transparent",
+                transition: "all 0.2s ease",
               }}
             >
-              トピック:
-            </span>
-            {topics.map((t) => (
-              <button
-                type="button"
-                key={t.id}
-                onClick={() => toggleTopic(t.id)}
-                style={{
-                  padding: "0.3rem 0.8rem",
-                  fontSize: "0.85rem",
-                  border: "1px solid",
-                  borderColor: selectedTopicIds.includes(t.id)
-                    ? "var(--color-accent-primary)"
-                    : "transparent",
-                  backgroundColor: selectedTopicIds.includes(t.id)
-                    ? "var(--color-accent-primary)"
-                    : "#f0f0f0",
-                  color: selectedTopicIds.includes(t.id)
-                    ? "#fff"
-                    : "var(--color-text)",
-                  borderRadius: "20px",
-                  cursor: "pointer",
-                  transition: "all 0.2s",
-                }}
-              >
-                {t.name}
-              </button>
-            ))}
-          </div>
+              {t.name}
+            </button>
+          ))}
         </div>
 
-        {/* Actions - Resized to be more compact */}
-        <div style={{ display: "flex", gap: "0.75rem", alignItems: "center" }}>
-          <button
-            type="button"
-            onClick={() => router.back()}
+        <div style={{ display: "flex", gap: "1rem" }}>
+          <span
             style={{
-              padding: "0.6rem 1rem",
-              fontSize: "0.9rem",
-              color: "var(--color-subtle)",
-              background: "transparent",
-              border: "none",
-              cursor: "pointer",
+              fontSize: "0.8rem",
+              color: "var(--color-text-tertiary)",
+              alignSelf: "center",
             }}
           >
-            キャンセル
-          </button>
+            {narrative.length} 文字
+          </span>
           <button
             type="submit"
             disabled={loading}
-            style={{
-              padding: "0.6rem 1.5rem",
-              fontSize: "0.9rem",
-              backgroundColor: "var(--color-text)",
-              color: "var(--color-base)",
-              borderRadius: "20px",
-              fontWeight: 600,
-              border: "none",
-              opacity: loading ? 0.7 : 1,
-              cursor: loading ? "wait" : "pointer",
-              boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
-              whiteSpace: "nowrap",
-            }}
+            className="btn-primary"
+            style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}
           >
+            <Save size={16} />
             {loading ? "保存中..." : "保存する"}
           </button>
         </div>
       </div>
+
+      {/* Hidden Technical Fields (Summary of AI view, etc) 
+          If strictly needed, keep them collapsed. For a Zen User, they don't need to see JSON input usually. 
+      */}
+      <details style={{ marginTop: "2rem" }} open>
+        <summary
+          style={{
+            cursor: "pointer",
+            color: "var(--color-text-tertiary)",
+            fontSize: "0.8rem",
+          }}
+        >
+          高度な設定: AI JSONデータ
+        </summary>
+        <textarea
+          value={aiJsonInput}
+          onChange={(e) => setAiJsonInput(e.target.value)}
+          style={{
+            width: "100%",
+            height: "100px",
+            marginTop: "0.5rem",
+            padding: "0.5rem",
+            fontSize: "0.8rem",
+            fontFamily: "monospace",
+            backgroundColor: "#333", // Light Gray (relative to dark theme)
+            color: "#fff",
+            border: "1px solid var(--color-border)",
+            borderRadius: "8px",
+          }}
+        />
+      </details>
     </form>
   );
 }

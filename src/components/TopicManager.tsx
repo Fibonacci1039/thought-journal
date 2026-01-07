@@ -1,8 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { Topic } from "@/lib/types";
-import Link from "next/link";
 import {
   createTopicAction,
   updateTopicAction,
@@ -23,6 +23,7 @@ export function TopicManager({ initialTopics }: { initialTopics: Topic[] }) {
   // Even better: use local state as the source of truth for the LIST, updating it on success.
   // Assuming the `initialTopics` prop updates when parent re-renders?
 
+  const router = useRouter();
   const [topics, setTopics] = useState(initialTopics);
   const [newName, setNewName] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -109,18 +110,24 @@ export function TopicManager({ initialTopics }: { initialTopics: Topic[] }) {
           placeholder="新しいトピック名"
           style={{
             flexGrow: 1,
-            padding: "0.5rem",
+            padding: "0.8rem",
+            fontSize: "1rem",
             border: "1px solid var(--color-border)",
-            borderRadius: "4px",
+            borderRadius: "8px",
+            backgroundColor: "#1c1c1e", // Dark Input Background
+            color: "var(--color-text-primary)",
           }}
         />
         <button
           type="submit"
           style={{
-            padding: "0.5rem 1rem",
-            background: "var(--color-text)",
-            color: "var(--color-base)",
-            borderRadius: "4px",
+            padding: "0 1.5rem",
+            background: "var(--color-accent)", // Orange
+            color: "#fff",
+            borderRadius: "8px",
+            fontWeight: 600,
+            border: "none",
+            cursor: "pointer",
           }}
         >
           追加
@@ -133,60 +140,127 @@ export function TopicManager({ initialTopics }: { initialTopics: Topic[] }) {
           <div
             key={t.id}
             style={{
-              padding: "1rem",
+              padding: "1rem 1.5rem",
               border: "1px solid var(--color-border)",
-              borderRadius: "4px",
+              borderRadius: "12px",
+              backgroundColor: "var(--color-bg-tertiary)", // Card background
               display: "flex",
               justifyContent: "space-between",
               alignItems: "center",
+              cursor: editingId === t.id ? "default" : "pointer",
+              transition: "transform 0.2s ease, box-shadow 0.2s ease",
+            }}
+            onClick={() => {
+              if (editingId !== t.id) {
+                router.push(`/topics/${t.id}`);
+              }
+            }}
+            onMouseEnter={(e) => {
+              if (editingId !== t.id) {
+                e.currentTarget.style.transform = "translateY(-2px)";
+                e.currentTarget.style.boxShadow = "var(--shadow-sm)";
+              }
+            }}
+            onMouseLeave={(e) => {
+              if (editingId !== t.id) {
+                e.currentTarget.style.transform = "none";
+                e.currentTarget.style.boxShadow = "none";
+              }
             }}
           >
             {editingId === t.id ? (
-              <div style={{ display: "flex", gap: "0.5rem", flexGrow: 1 }}>
+              <div
+                style={{ display: "flex", gap: "0.5rem", flexGrow: 1 }}
+                onClick={(e) => e.stopPropagation()} // Prevent click for input area
+              >
                 <input
                   type="text"
                   value={editName}
                   onChange={(e) => setEditName(e.target.value)}
-                  style={{ flexGrow: 1, padding: "0.25rem" }}
+                  style={{
+                    flexGrow: 1,
+                    padding: "0.5rem",
+                    backgroundColor: "#1c1c1e",
+                    color: "var(--color-text-primary)",
+                    border: "1px solid var(--color-border)",
+                    borderRadius: "4px",
+                  }}
                   autoFocus
                 />
                 <button
                   onClick={() => handleUpdate(t.id)}
-                  style={{ fontSize: "0.9rem" }}
+                  style={{
+                    fontSize: "0.9rem",
+                    padding: "0.5rem 1rem",
+                    backgroundColor: "var(--color-accent)",
+                    color: "#fff",
+                    borderRadius: "4px",
+                    border: "none",
+                    cursor: "pointer",
+                  }}
                 >
                   保存
                 </button>
                 <button
                   onClick={() => setEditingId(null)}
-                  style={{ color: "var(--color-subtle)", fontSize: "0.9rem" }}
+                  style={{
+                    color: "var(--color-text-secondary)",
+                    fontSize: "0.9rem",
+                    background: "transparent",
+                    border: "none",
+                    cursor: "pointer",
+                  }}
                 >
                   キャンセル
                 </button>
               </div>
             ) : (
               <>
-                <Link
-                  href={`/topics/${t.id}`}
+                <span
                   style={{
-                    textDecoration: "none",
-                    color: "inherit",
-                    fontWeight: 500,
+                    color: "var(--color-text-primary)",
+                    fontWeight: 600,
+                    fontSize: "1.05rem",
                   }}
                 >
                   {t.name}
-                </Link>
+                </span>
                 <div
-                  style={{ display: "flex", gap: "1rem", fontSize: "0.85rem" }}
+                  style={{
+                    display: "flex",
+                    gap: "0.5rem",
+                    fontSize: "0.85rem",
+                  }}
                 >
                   <button
-                    onClick={() => startEdit(t)}
-                    style={{ color: "var(--color-subtle)" }}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      startEdit(t);
+                    }}
+                    style={{
+                      padding: "0.4rem 0.8rem",
+                      borderRadius: "6px",
+                      backgroundColor: "rgba(255,255,255,0.1)",
+                      color: "var(--color-text-secondary)",
+                      border: "none",
+                      cursor: "pointer",
+                    }}
                   >
                     名前変更
                   </button>
                   <button
-                    onClick={() => handleDelete(t.id)}
-                    style={{ color: "var(--color-subtle)" }}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDelete(t.id);
+                    }}
+                    style={{
+                      padding: "0.4rem 0.8rem",
+                      borderRadius: "6px",
+                      backgroundColor: "rgba(255, 59, 48, 0.15)", // Red tint
+                      color: "#ff453a", // Red text
+                      border: "none",
+                      cursor: "pointer",
+                    }}
                   >
                     削除
                   </button>

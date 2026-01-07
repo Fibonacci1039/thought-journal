@@ -239,7 +239,7 @@ export async function saveWeeklySummaryAction(jsonString: string) {
     } else {
       const { data: newTopic, error } = await supabase
         .from("topics")
-        .insert({ name: "Weekly Review", description: "週次振り返り用" })
+        .insert({ name: "Weekly Review" })
         .select()
         .single();
       if (error) throw error;
@@ -250,10 +250,13 @@ export async function saveWeeklySummaryAction(jsonString: string) {
     const now = new Date();
     const oneWeekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
 
+    // Format dates as YYYY-MM-DD for DATE column
+    const toDateString = (d: Date) => d.toISOString().split("T")[0];
+
     const { error } = await supabase.from("periodic_summaries").insert({
       topic_id: topicId,
-      period_start: oneWeekAgo.toISOString(),
-      period_end: now.toISOString(),
+      period_start: toDateString(oneWeekAgo),
+      period_end: toDateString(now),
       human_summary: aiKnowledge.theme || "週間振り返り",
       ai_knowledge: aiKnowledge,
     });
@@ -264,6 +267,10 @@ export async function saveWeeklySummaryAction(jsonString: string) {
     return { success: true, topicId };
   } catch (e: any) {
     console.error("Save Weekly Error:", e);
-    return { success: false, error: "保存に失敗しました" };
+    // Return detailed error for debugging
+    return {
+      success: false,
+      error: `保存に失敗しました: ${e?.message || JSON.stringify(e)}`,
+    };
   }
 }

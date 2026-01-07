@@ -13,21 +13,8 @@ export default async function WeeklyPage() {
   ).length;
 
   return (
-    <main>
-      <div style={{ marginBottom: "2rem" }}>
-        <Link
-          href="/"
-          style={{
-            fontSize: "0.9rem",
-            color: "var(--color-subtle)",
-            textDecoration: "none",
-          }}
-        >
-          ← ホームに戻る
-        </Link>
-      </div>
-
-      <h1 style={{ marginBottom: "1rem" }}>Weekly Review</h1>
+    <main className="container animate-enter">
+      <h1 style={{ marginBottom: "1rem" }}>週次レビュー</h1>
       <p style={{ color: "var(--color-subtle)", marginBottom: "2rem" }}>
         直近1週間 ({oneWeekAgo.toLocaleDateString()} ~{" "}
         {now.toLocaleDateString()}) のログ数: {weeklyCount}件
@@ -40,7 +27,7 @@ export default async function WeeklyPage() {
           style={{
             padding: "2rem",
             textAlign: "center",
-            backgroundColor: "#f5f5f5",
+            backgroundColor: "var(--color-bg-tertiary)",
             borderRadius: "12px",
             color: "var(--color-subtle)",
           }}
@@ -54,7 +41,7 @@ export default async function WeeklyPage() {
               style={{
                 padding: "0.8rem 1.5rem",
                 backgroundColor: "var(--color-text)",
-                color: "#fff",
+                color: "var(--color-bg-tertiary)",
                 borderRadius: "30px",
                 textDecoration: "none",
                 fontWeight: 600,

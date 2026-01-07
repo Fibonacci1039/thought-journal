@@ -57,6 +57,8 @@ export async function createEntry(
         topic_ids: entry.topic_ids,
         mood: entry.mood,
         meta: entry.meta,
+        source_url: entry.source_url,
+        cite_text: entry.cite_text,
       },
     ])
     .select()
@@ -144,4 +146,50 @@ export async function getLatestTopicSummary(topicId: string) {
 
   if (error && error.code !== "PGRST116") throw error; // PGRST116 is "Row not found"
   return data;
+}
+
+// -- Topic Relationships (Mind Map) --
+
+export async function createTopicRelationship(
+  sourceId: string,
+  targetId: string,
+  relationType: string = "related"
+) {
+  // Sort IDs to ensure unique check works regardless of direction if we want bidirectional
+  // But for now, let's treat as directed or user-defined.
+  // Actually, to prevent "A->B" and "B->A" dupes if we mean undirected, we might sort.
+  // Let's assume directed for now (Source -> Target).
+
+  const { data, error } = await supabase
+    .from("topic_relationships")
+    .insert([
+      {
+        source_topic_id: sourceId,
+        target_topic_id: targetId,
+        relation_type: relationType,
+      },
+    ])
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data;
+}
+
+export async function getTopicRelationships() {
+  const { data, error } = await supabase
+    .from("topic_relationships")
+    .select("*");
+
+  if (error) throw error;
+  return data;
+}
+
+export async function deleteTopicRelationship(id: string) {
+  const { error } = await supabase
+    .from("topic_relationships")
+    .delete()
+    .eq("id", id);
+
+  if (error) throw error;
 }

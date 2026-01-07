@@ -26,7 +26,7 @@ export default async function TopicDetailPage({
   const topicEntries = entries.filter((e) => e.topic_ids.includes(id));
 
   return (
-    <main style={{ maxWidth: "800px", margin: "0 auto" }}>
+    <main className="container animate-enter">
       {/* Navigation */}
       <div style={{ marginBottom: "1.5rem" }}>
         <Link
@@ -81,7 +81,7 @@ export default async function TopicDetailPage({
           根拠データ / ログ履歴 ({topicEntries.length}件)
         </h2>
         <div style={{ opacity: 0.9 }}>
-          <EntryList entries={topicEntries} />
+          <EntryList entries={topicEntries} topics={topics} />
         </div>
       </section>
     </main>

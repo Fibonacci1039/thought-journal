@@ -11,9 +11,14 @@
   "dependencies": {
     "@google/generative-ai": "^0.24.1",
     "@supabase/supabase-js": "^2.89.0",
+    "@types/dagre": "^0.7.53",
+    "dagre": "^0.8.5",
+    "lucide-react": "^0.562.0",
     "next": "16.1.1",
     "react": "19.2.3",
     "react-dom": "19.2.3",
+    "react-force-graph-2d": "^1.29.0",
+    "reactflow": "^11.11.4",
     "server-only": "^0.0.1"
   },
   "devDependencies": {

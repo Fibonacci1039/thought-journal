@@ -1,44 +1,25 @@
 import { EntryList } from "@/components/EntryList";
-import { getEntries } from "@/lib/storage";
-import Link from "next/link";
+import { getEntries, getTopics } from "@/lib/storage";
+import { Entry, Topic } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
 export default async function Home() {
+  let entries: Entry[] = [];
+  let topics: Topic[] = [];
+  let error = null;
+
   try {
-    const entries = await getEntries();
-
-    return (
-      <main>
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "flex-end",
-            marginBottom: "1rem",
-          }}
-        >
-          <Link
-            href="/weekly"
-            style={{
-              fontSize: "0.9rem",
-              color: "var(--color-accent-primary)",
-              textDecoration: "none",
-              fontWeight: 600,
-            }}
-          >
-            📮 週次レターを作成 (Weekly Review) →
-          </Link>
-        </div>
-
-        <h1>記録一覧</h1>
-        <div style={{ marginTop: "2rem" }}>
-          <EntryList entries={entries} />
-        </div>
-      </main>
-    );
+    const [e, t] = await Promise.all([getEntries(), getTopics()]);
+    entries = e;
+    topics = t;
   } catch (err) {
     console.error("Database Error FULL:", JSON.stringify(err, null, 2));
     if (err instanceof Error) console.error("Error Message:", err.message);
+    error = err;
+  }
+
+  if (error) {
     return (
       <main>
         <h1>エラー</h1>
@@ -49,4 +30,13 @@ export default async function Home() {
       </main>
     );
   }
+
+  return (
+    <main>
+      <h1>記録一覧</h1>
+      <div style={{ marginTop: "2rem" }}>
+        <EntryList entries={entries} topics={topics} />
+      </div>
+    </main>
+  );
 }

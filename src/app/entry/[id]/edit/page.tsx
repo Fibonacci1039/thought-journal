@@ -17,7 +17,7 @@ export default async function EditEntryPage({
   }
 
   return (
-    <main>
+    <main className="container animate-enter">
       <h1 style={{ marginBottom: "2rem" }}>記録の編集</h1>
       <EntryForm topics={topics} initialData={entry} />
     </main>

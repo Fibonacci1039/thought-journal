@@ -20,11 +20,22 @@ export type Entry = {
   topic_ids: string[]; // UUID[] (Relational)
   mood?: string | null; // Deprecated but kept for compatibility
   meta?: Meta; // Meta Index Layer
+  // Reference Capture
+  source_url?: string | null;
+  cite_text?: string | null;
 };
 
 export type Topic = {
   id: string; // UUID
   name: string; // Renamed from title
+  created_at: string;
+};
+
+export type TopicRelationship = {
+  id: string;
+  source_topic_id: string;
+  target_topic_id: string;
+  relation_type: string;
   created_at: string;
 };
 

@@ -10,7 +10,7 @@ export default async function TopicsPage() {
   } catch (err) {
     console.error("Database Error:", err);
     return (
-      <main>
+      <main className="container animate-enter">
         <h1>エラー</h1>
         <p style={{ marginTop: "1rem", color: "var(--color-subtle)" }}>
           データベースに接続できませんでした。トピックを読み込めません。
@@ -20,7 +20,7 @@ export default async function TopicsPage() {
   }
 
   return (
-    <main>
+    <main className="container animate-enter">
       <h1>トピック管理</h1>
       <div style={{ marginTop: "2rem" }}>
         <TopicManager initialTopics={topics} />
