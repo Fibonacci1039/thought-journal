@@ -4,6 +4,8 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Topic } from "@/lib/types";
 import { createEntryAction } from "@/app/actions";
+import { uploadImage } from "@/lib/client-storage";
+import { ImageUploader } from "@/components/ImageUploader";
 import { Book, Film, Palette, Globe, MoreHorizontal } from "lucide-react";
 import { TagInput } from "./TagInput";
 
@@ -38,7 +40,9 @@ export function QuoteForm({ topics }: Props) {
   const [quoteText, setQuoteText] = useState("");
   const [myNote, setMyNote] = useState("");
   const [selectedTopicIds, setSelectedTopicIds] = useState<string[]>([]);
+
   const [tags, setTags] = useState<string[]>([]);
+  const [newImages, setNewImages] = useState<File[]>([]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -49,7 +53,16 @@ export function QuoteForm({ topics }: Props) {
     }
 
     setLoading(true);
+
     try {
+      // Upload Images
+      let imageUrls: string[] = [];
+      if (newImages.length > 0) {
+        imageUrls = await Promise.all(
+          newImages.map((file) => uploadImage(file))
+        );
+      }
+
       const quoteData = {
         type: "quote",
         source_type: sourceType,
@@ -69,6 +82,7 @@ export function QuoteForm({ topics }: Props) {
         tags: tags.length > 0 ? tags : undefined,
         source_url: sourceUrl,
         cite_text: quoteText,
+        images: imageUrls,
       });
 
       if (result.success) {
@@ -226,6 +240,9 @@ export function QuoteForm({ topics }: Props) {
           style={inputStyle}
         />
       </div>
+
+      {/* Images */}
+      <ImageUploader images={newImages} onImagesChange={setNewImages} />
 
       {/* Quote Text */}
       <div style={{ marginBottom: "1.5rem" }}>

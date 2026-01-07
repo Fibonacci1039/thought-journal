@@ -1,6 +1,9 @@
 -- Enable UUID extension
 create extension if not exists "uuid-ossp";
 
+-- Enable pgvector extension for embeddings
+create extension if not exists "vector";
+
 -- Table: topics
 create table if not exists public.topics (
   id uuid primary key default uuid_generate_v4(),
@@ -13,24 +16,33 @@ create table if not exists public.entries (
   id uuid primary key default uuid_generate_v4(),
   created_at timestamp with time zone default timezone('utc'::text, now()) not null,
   updated_at timestamp with time zone default timezone('utc'::text, now()) not null,
+  title text, -- Added: Title for the entry
   human_view text not null,
   ai_view jsonb not null,
-  topic_ids uuid[] default '{}'::uuid[] not null
+  topic_ids uuid[] default '{}'::uuid[] not null,
+  -- New Columns for v2 features
+  entry_type text default 'journal', -- 'journal', 'quick_memo', 'quote', 'idea'
+  tags text[] default '{}'::text[],
+  images text[] default '{}'::text[], -- Array of image URLs
+  embedding vector(1536), -- Gemini text-embedding-004 (768) or OpenAI (1536). Using 1536 as placeholder, adjust if using Gemini (768). Note: Gemini embedding size is 768 usually. Let's use 768 for Gemini.
+  -- Wait, user might use OpenAI. Let's start with 768 for Gemini text-embedding-004.
+  -- Actually, in plan I said "Gemini API (text-embedding-004)". Its dimension is 768.
+  mood text,
+  meta jsonb,
+  source_url text,
+  cite_text text
 );
 
+-- Adjust embedding dimension if needed later. using 768 for Gemini.
+alter table public.entries alter column embedding type vector(768);
+
+
 -- STRICT RLS: Only allow access to the service_role (server-side)
--- Disable all existing policies first (clean slate approach recommended manually, but here we define overrides)
 alter table public.topics enable row level security;
 alter table public.entries enable row level security;
 
--- Remove permissive policies if they exist (This SQL script is idempotent-ish if we drop first, 
--- but for safety in this artifacts, we'll just create the strict ones. 
--- User should clear old policies if they applied the previous schema.)
-
 -- Policy: Server Only for Topics
-drop policy if exists "Allow all access to topics" on public.topics;
 drop policy if exists "server_only_topics" on public.topics;
-
 create policy "server_only_topics"
 on public.topics
 for all
@@ -38,11 +50,42 @@ using (auth.role() = 'service_role')
 with check (auth.role() = 'service_role');
 
 -- Policy: Server Only for Entries
-drop policy if exists "Allow all access to entries" on public.entries;
 drop policy if exists "server_only_entries" on public.entries;
-
 create policy "server_only_entries"
 on public.entries
 for all
 using (auth.role() = 'service_role')
 with check (auth.role() = 'service_role');
+
+-- Similarity Search Function (RPC)
+create or replace function match_entries (
+  query_embedding vector(768),
+  match_threshold float,
+  match_count int
+)
+returns table (
+  id uuid,
+  title text,
+  human_view text,
+  similarity float
+)
+language plpgsql
+as $$
+begin
+  return query
+  select
+    entries.id,
+    entries.title,
+    entries.human_view,
+    1 - (entries.embedding <=> query_embedding) as similarity
+  from entries
+  where 1 - (entries.embedding <=> query_embedding) > match_threshold
+  order by entries.embedding <=> query_embedding
+  limit match_count;
+end;
+$$;
+
+-- Storage Bucket Setup (Manually create 'entry_images' in Supabase Dashboard usually, but SQL can help)
+-- Note: Creating buckets via SQL varies by platform. Assuming standard Supabase storage schema if available.
+-- For now, user needs to create 'entry_images' bucket in Dashboard.
+

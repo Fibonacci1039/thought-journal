@@ -8,8 +8,10 @@ import {
   createEntry,
   updateEntry,
   deleteEntry,
+  findRelatedEntries,
 } from "@/lib/storage";
 import { Entry } from "@/lib/types";
+import { generateEmbedding } from "@/lib/embeddings";
 
 // Helper to handle Postgrest errors
 function handleDbError(e: any): { success: false; error: string } {
@@ -98,23 +100,23 @@ export async function createEntryAction(
       },
     };
 
+    // Generate Embedding
+    let embedding: number[] | undefined;
+    try {
+      const vec = await generateEmbedding(
+        `${entry.title || ""} ${entry.human_view}`
+      );
+      if (vec) embedding = vec;
+    } catch (e) {
+      console.error("Embedding generation failed", e);
+    }
+
     const newEntry = await createEntry({
       ...entry,
       meta: metaPayload,
+      embedding: embedding,
     });
 
-    // Auto-generate embedding (Fire and forget, or await?)
-    // Awaiting to ensure consistency for now, though it slows down save slightly.
-    try {
-      // We can't import the action itself easily due to circular deps if we aren't careful,
-      // but we can call the internal helper if we refactor.
-      // For now, let's just let the 'generateEntryEmbeddingAction' be called from client or refactor later.
-      // Or simpler: Just revalidate, and have a client-side effect?
-      // No, server side is better.
-      // Let's leave clear comment to implement auto-embedding.
-    } catch (e) {
-      console.error("Auto-embedding failed", e);
-    }
     revalidatePath("/"); // Home page usually lists entries
     return { success: true, data: newEntry };
   } catch (e) {
@@ -124,7 +126,28 @@ export async function createEntryAction(
 
 export async function updateEntryAction(id: string, updates: Partial<Entry>) {
   try {
-    const updated = await updateEntry(id, updates);
+    // If human_view is updated, re-generate embedding
+    const updatesWithEmbedding = { ...updates };
+    if (updates.human_view || updates.title) {
+      try {
+        // Need to fetch full entry if updating only one, but simpler to just use what we have or accept partial embedding?
+        // Ideally should combine title + content.
+        // For simplicity, if human_view provided, regenerate embedding from it.
+        const text = `${updates.title || ""} ${
+          updates.human_view || ""
+        }`.trim();
+        if (text) {
+          const vec = await generateEmbedding(text);
+          if (vec) {
+            updatesWithEmbedding.embedding = vec;
+          }
+        }
+      } catch (e) {
+        console.error("Embedding update failed", e);
+      }
+    }
+
+    const updated = await updateEntry(id, updatesWithEmbedding);
     revalidatePath("/");
     revalidatePath(`/entries/${id}`);
     return { success: true, data: updated };
@@ -188,7 +211,7 @@ export async function analyzeTopicContentAction(
     }
 
     const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    const model = genAI.getGenerativeModel({ model: "gemini-pro" });
 
     // Limit payload to avoid token limits (summarize if needed in future)
     const entriesText = entries
@@ -240,23 +263,7 @@ export async function analyzeTopicContentAction(
 
 // -- Personal AI (RAG) --
 
-// Helper: Generate Embedding
-async function generateEmbedding(text: string): Promise<number[] | null> {
-  try {
-    const { GoogleGenerativeAI } = await import("@google/generative-ai");
-    const apiKey = process.env.GEMINI_API_KEY;
-    if (!apiKey) return null;
-
-    const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({ model: "text-embedding-004" });
-
-    const result = await model.embedContent(text);
-    return result.embedding.values;
-  } catch (e) {
-    console.error("Embedding Error:", e);
-    return null;
-  }
-}
+// (Removed local generateEmbedding function in favor of imported one)
 
 export async function chatWithPastAction(query: string) {
   try {
@@ -292,7 +299,7 @@ export async function chatWithPastAction(query: string) {
     // 3. Generate Answer
     const apiKey = process.env.GEMINI_API_KEY!;
     const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    const model = genAI.getGenerativeModel({ model: "gemini-pro" });
 
     const contextText =
       (similarEntries as any[])
@@ -368,5 +375,21 @@ export async function listEntriesMissingEmbeddingAction() {
   } catch (e: any) {
     console.error("List Entries Error:", e);
     return { success: false, error: e.message };
+  }
+}
+
+export async function findRelatedEntriesAction(text: string) {
+  try {
+    if (!text.trim()) return { success: false, error: "Text is empty" };
+
+    const embedding = await generateEmbedding(text);
+    if (!embedding) {
+      return { success: false, error: "Failed to generate embedding" };
+    }
+
+    const related = await findRelatedEntries(embedding);
+    return { success: true, data: related };
+  } catch (e: any) {
+    return handleDbError(e);
   }
 }

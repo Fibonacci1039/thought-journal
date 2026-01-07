@@ -4,6 +4,9 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Entry, Topic } from "@/lib/types";
 import { createEntryAction, updateEntryAction } from "@/app/actions";
+
+import { uploadImage } from "@/lib/client-storage";
+import { ImageUploader } from "@/components/ImageUploader";
 import { Mic, MicOff, Book, Save } from "lucide-react";
 
 // Extend Window for Speech API
@@ -41,6 +44,17 @@ export function EntryForm({ topics, initialData, presetPrompt }: Props) {
   );
   const [sourceUrl, setSourceUrl] = useState(initialData?.source_url || "");
   const [citeText, setCiteText] = useState(initialData?.cite_text || "");
+
+  // Image Upload State
+  const [newImages, setNewImages] = useState<File[]>([]);
+  // Store valid URLs of existing images (filtering out deletions logic can be added later if needed)
+  const [existingImageUrls, setExistingImageUrls] = useState<string[]>(
+    initialData?.images || []
+  );
+
+  const handleExistingImageRemove = (url: string) => {
+    setExistingImageUrls((prev) => prev.filter((u) => u !== url));
+  };
 
   // Voice Input State
   const [isListening, setIsListening] = useState(false);
@@ -137,6 +151,16 @@ export function EntryForm({ topics, initialData, presetPrompt }: Props) {
     setLoading(true);
 
     try {
+      // 1. Upload Images
+      let finalImageUrls = [...existingImageUrls];
+      if (newImages.length > 0) {
+        // Upload concurrently
+        const uploadedUrls = await Promise.all(
+          newImages.map((file) => uploadImage(file))
+        );
+        finalImageUrls = [...finalImageUrls, ...uploadedUrls];
+      }
+
       const payload = {
         title: title,
         human_view: narrative,
@@ -144,7 +168,8 @@ export function EntryForm({ topics, initialData, presetPrompt }: Props) {
         topic_ids: selectedTopicIds,
         source_url: sourceUrl,
         cite_text: citeText,
-        // Mood is removed from input
+        // entry_type is inferred? or default 'journal'
+        images: finalImageUrls,
       };
 
       const res = initialData
@@ -314,6 +339,13 @@ export function EntryForm({ topics, initialData, presetPrompt }: Props) {
           </div>
         )}
       </div>
+
+      <ImageUploader
+        images={newImages}
+        onImagesChange={setNewImages}
+        existingImages={existingImageUrls}
+        onExistingImageRemove={handleExistingImageRemove}
+      />
 
       {/* 3. Footer Meta (Topics & Save) */}
       <div

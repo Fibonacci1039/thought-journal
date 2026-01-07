@@ -59,6 +59,10 @@ export async function createEntry(
         meta: entry.meta,
         source_url: entry.source_url,
         cite_text: entry.cite_text,
+        entry_type: entry.entry_type,
+        tags: entry.tags,
+        images: entry.images,
+        embedding: entry.embedding,
       },
     ])
     .select()
@@ -148,6 +152,23 @@ export async function getLatestTopicSummary(topicId: string) {
   return data;
 }
 
+// -- Vector Search (Serendipity) --
+
+export async function findRelatedEntries(
+  embedding: number[],
+  threshold = 0.7,
+  count = 5
+) {
+  const { data, error } = await supabase.rpc("match_entries", {
+    query_embedding: embedding,
+    match_threshold: threshold,
+    match_count: count,
+  });
+
+  if (error) throw error;
+  return data;
+}
+
 // -- Topic Relationships (Mind Map) --
 
 export async function createTopicRelationship(
@@ -193,3 +214,5 @@ export async function deleteTopicRelationship(id: string) {
 
   if (error) throw error;
 }
+
+// -- Storage (Images) --

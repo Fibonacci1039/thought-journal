@@ -22,6 +22,8 @@ export type Entry = {
   ai_view: Record<string, unknown>; // JSONB (Knowledge Layer)
   topic_ids: string[]; // UUID[] (Relational)
   tags?: string[]; // タグ（文字列配列）
+  images?: string[]; // 画像URLの配列
+  embedding?: number[]; // Vector embedding for semantic search
   mood?: string | null; // Deprecated but kept for compatibility
   meta?: Meta; // Meta Index Layer
   // Reference Capture

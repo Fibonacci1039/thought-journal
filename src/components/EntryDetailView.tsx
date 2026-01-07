@@ -6,6 +6,7 @@ import { Entry, Topic } from "@/lib/types";
 import { deleteEntryAction } from "@/app/actions";
 import { Trash2, Copy, Check, Edit, ArrowLeft } from "lucide-react";
 import Link from "next/link";
+import { RelatedEntries } from "./RelatedEntries";
 
 type Props = {
   entry: Entry;
@@ -197,6 +198,41 @@ export function EntryDetailView({ entry, topics }: Props) {
       {mode === "human" ? (
         // Human View
         <div>
+          {/* Images Gallery */}
+          {entry.images && entry.images.length > 0 && (
+            <div
+              style={{
+                marginBottom: "1.5rem",
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))",
+                gap: "1rem",
+              }}
+            >
+              {entry.images.map((url, idx) => (
+                <div
+                  key={idx}
+                  style={{
+                    position: "relative",
+                    borderRadius: "12px",
+                    overflow: "hidden",
+                    border: "1px solid var(--color-border)",
+                    aspectRatio: "16/9",
+                  }}
+                >
+                  <img
+                    src={url}
+                    alt={`${entry.title || "Entry"} image ${idx + 1}`}
+                    style={{
+                      width: "100%",
+                      height: "100%",
+                      objectFit: "cover",
+                    }}
+                  />
+                </div>
+              ))}
+            </div>
+          )}
+
           {/* Main content */}
           <div
             style={{
@@ -281,6 +317,12 @@ export function EntryDetailView({ entry, topics }: Props) {
               )}
             </button>
           </div>
+
+          {/* Related Entries (Serendipity) */}
+          <RelatedEntries
+            currentEntryId={entry.id}
+            content={entry.human_view}
+          />
         </div>
       ) : (
         // AI View
