@@ -473,7 +473,8 @@ export function EntryList({
                               marginTop: "0.4rem",
                             }}
                           >
-                            {entry.topic_ids.length > 0 &&
+                            {entry.topic_ids &&
+                              entry.topic_ids.length > 0 &&
                               entry.topic_ids.map((tid) => {
                                 const topic = topics.find((t) => t.id === tid);
                                 return (
