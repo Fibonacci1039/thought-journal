@@ -102,12 +102,21 @@ export function EntryList({
 
   // Determine entry type
   const getEntryType = (entry: Entry): EntryType => {
-    if (entry.entry_type) return entry.entry_type;
+    if (entry.entry_type && ENTRY_TYPE_CONFIG[entry.entry_type]) {
+      return entry.entry_type;
+    }
     const aiView = entry.ai_view as Record<string, unknown>;
     if (aiView?.type === "quick_memo") return "quick_memo";
     if (aiView?.type === "quote") return "quote";
     if (entry.cite_text) return "quote";
-    return entry.human_view.length > 100 ? "journal" : "quick_memo";
+    // Fallback based on content length, with null check
+    const contentLength = entry.human_view?.length || 0;
+    return contentLength > 100 ? "journal" : "quick_memo";
+  };
+
+  // Safe config getter with fallback
+  const getEntryConfig = (entryType: EntryType) => {
+    return ENTRY_TYPE_CONFIG[entryType] || ENTRY_TYPE_CONFIG.journal;
   };
 
   // Filter entries by type and tag
@@ -329,7 +338,7 @@ export function EntryList({
                 {groupEntries.map((entry) => {
                   const entryType = getEntryType(entry);
                   const isCompact = entryType === "quick_memo";
-                  const config = ENTRY_TYPE_CONFIG[entryType];
+                  const config = getEntryConfig(entryType);
 
                   const timeStr = new Date(entry.created_at).toLocaleTimeString(
                     "en-US",
