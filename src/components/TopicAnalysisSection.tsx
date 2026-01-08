@@ -341,7 +341,12 @@ export function TopicAnalysisSection({
 
       {mode === "IDLE" && (
         <div style={{ textAlign: "center", padding: "1rem 0" }}>
-          <p style={{ marginBottom: "1.5rem", color: "var(--color-subtle)" }}>
+          <p
+            style={{
+              marginBottom: "1.5rem",
+              color: "var(--color-text-secondary)",
+            }}
+          >
             ログをまとめてAIに渡し、変化を分析します。
           </p>
           <button
@@ -352,11 +357,11 @@ export function TopicAnalysisSection({
               fontWeight: 600,
               padding: "0.8rem 1.5rem",
               color: "#fff",
-              backgroundColor: "var(--color-text)",
+              backgroundColor: "var(--color-accent)",
               border: "none",
               borderRadius: "30px",
               cursor: loading ? "wait" : "pointer",
-              boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
+              boxShadow: "0 4px 12px rgba(0,0,0,0.2)",
             }}
           >
             {loading ? "生成中..." : "🪄 分析用プロンプトを作成"}
@@ -414,7 +419,7 @@ export function TopicAnalysisSection({
                 flex: 1,
                 padding: "0.6rem",
                 borderRadius: "4px",
-                background: "var(--color-text)",
+                background: "var(--color-accent)",
                 color: "#fff",
                 border: "none",
                 cursor: "pointer",
@@ -477,7 +482,7 @@ export function TopicAnalysisSection({
                 flex: 1,
                 padding: "0.6rem",
                 borderRadius: "4px",
-                background: "var(--color-text)",
+                background: "var(--color-accent)",
                 color: "#fff",
                 border: "none",
                 cursor: "pointer",
