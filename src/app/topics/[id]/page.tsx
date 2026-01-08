@@ -23,7 +23,7 @@ export default async function TopicDetailPage({
     notFound();
   }
 
-  const topicEntries = entries.filter((e) => e.topic_ids.includes(id));
+  const topicEntries = entries.filter((e) => e.topic_ids?.includes(id));
 
   return (
     <main className="container animate-enter">
@@ -71,18 +71,17 @@ export default async function TopicDetailPage({
       <section>
         <h2
           style={{
-            fontSize: "1rem",
-            color: "var(--color-subtle)",
-            paddingBottom: "0.5rem",
-            borderBottom: "1px solid #eee",
+            fontSize: "1.1rem",
+            fontWeight: 600,
+            color: "var(--color-text-secondary)",
+            paddingBottom: "0.75rem",
+            borderBottom: "1px solid var(--color-border)",
             marginBottom: "1.5rem",
           }}
         >
-          根拠データ / ログ履歴 ({topicEntries.length}件)
+          根幹データ / ログ履歴 ({topicEntries.length}件)
         </h2>
-        <div style={{ opacity: 0.9 }}>
-          <EntryList entries={topicEntries} topics={topics} />
-        </div>
+        <EntryList entries={topicEntries} topics={topics} />
       </section>
     </main>
   );
