@@ -15,12 +15,14 @@ import { generateEmbedding } from "@/lib/embeddings";
 
 // Helper to handle Postgrest errors
 function handleDbError(e: any): { success: false; error: string } {
-  console.error(e);
+  console.error("Database error:", e);
   if (e?.code === "23505") {
     // Unique violation
     return { success: false, error: "このトピック名は既に使用されています" };
   }
-  return { success: false, error: "操作に失敗しました" };
+  // Return more detailed error message for debugging
+  const errorMessage = e?.message || e?.error?.message || "操作に失敗しました";
+  return { success: false, error: errorMessage };
 }
 
 // -- Topics --
