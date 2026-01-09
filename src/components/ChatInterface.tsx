@@ -1,22 +1,52 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { Send, User, Loader2, BookOpen, Sparkles } from "lucide-react";
+import {
+  Send,
+  User,
+  Loader2,
+  BookOpen,
+  Sparkles,
+  MessageCircle,
+  Brain,
+  Heart,
+  Lightbulb,
+  Clock,
+} from "lucide-react";
 import { chatWithPastAction } from "@/app/actions";
 import { checkUsageLimit } from "@/lib/usage";
 import { UsageCheckResult } from "@/lib/usage-types";
 import { UsageLimitModal } from "./UsageLimitModal";
 import { UsageIndicator } from "./UsageIndicator";
 
+// サンプル質問
+const SAMPLE_QUESTIONS = [
+  {
+    icon: <Brain size={16} />,
+    text: "最近どんなことで悩んでた？",
+    color: "#8b5cf6",
+  },
+  {
+    icon: <Heart size={16} />,
+    text: "前向きになれた時のことを教えて",
+    color: "#ec4899",
+  },
+  {
+    icon: <Lightbulb size={16} />,
+    text: "良いアイデアを思いついた時は？",
+    color: "#f59e0b",
+  },
+  {
+    icon: <Clock size={16} />,
+    text: "1ヶ月前の自分は何を考えてた？",
+    color: "#10b981",
+  },
+];
+
 export function ChatInterface() {
   const [messages, setMessages] = useState<
     { role: "user" | "bot"; text: string; sources?: any[] }[]
-  >([
-    {
-      role: "bot",
-      text: "こんにちは。過去の記録に基づいて、あなたの思考整理をお手伝いします。何か聞いてみてください。",
-    },
-  ]);
+  >([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -34,16 +64,16 @@ export function ChatInterface() {
     }
   }, [messages]);
 
-  const handleSend = async () => {
-    if (!input.trim() || loading) return;
+  const handleSend = async (messageText?: string) => {
+    const textToSend = messageText || input;
+    if (!textToSend.trim() || loading) return;
 
-    const userMsg = input;
     setInput("");
-    setMessages((prev) => [...prev, { role: "user", text: userMsg }]);
+    setMessages((prev) => [...prev, { role: "user", text: textToSend }]);
     setLoading(true);
 
     try {
-      const result = await chatWithPastAction(userMsg);
+      const result = await chatWithPastAction(textToSend);
       if (result.success && result.data) {
         setMessages((prev) => [
           ...prev,
@@ -79,6 +109,8 @@ export function ChatInterface() {
     }
   };
 
+  const isNewConversation = messages.length === 0;
+
   return (
     <div
       style={{
@@ -95,53 +127,165 @@ export function ChatInterface() {
         style={{
           flex: 1,
           overflowY: "auto",
-          padding: "1rem",
+          padding: "1.5rem",
           display: "flex",
           flexDirection: "column",
           gap: "1rem",
         }}
       >
+        {/* Welcome State - Show when no messages */}
+        {isNewConversation && (
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              justifyContent: "center",
+              height: "100%",
+              textAlign: "center",
+              padding: "2rem",
+            }}
+          >
+            {/* AI Avatar */}
+            <div
+              style={{
+                width: 80,
+                height: 80,
+                borderRadius: "50%",
+                background: "linear-gradient(135deg, #8b5cf6, #ec4899)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                marginBottom: "1.5rem",
+                boxShadow: "0 8px 32px rgba(139, 92, 246, 0.3)",
+              }}
+            >
+              <Sparkles size={36} color="#fff" />
+            </div>
+
+            <h2
+              style={{
+                fontSize: "1.5rem",
+                fontWeight: 600,
+                marginBottom: "0.5rem",
+                background: "linear-gradient(135deg, #8b5cf6, #ec4899)",
+                WebkitBackgroundClip: "text",
+                WebkitTextFillColor: "transparent",
+                backgroundClip: "text",
+              }}
+            >
+              パーソナルAI
+            </h2>
+
+            <p
+              style={{
+                color: "var(--color-text-tertiary)",
+                fontSize: "0.95rem",
+                marginBottom: "2rem",
+                maxWidth: "400px",
+                lineHeight: 1.6,
+              }}
+            >
+              あなたの過去の記録をもとに、思考の整理や振り返りをお手伝いします。
+              気軽に話しかけてみてください。
+            </p>
+
+            {/* Sample Questions */}
+            <div
+              style={{
+                display: "flex",
+                flexWrap: "wrap",
+                gap: "0.75rem",
+                justifyContent: "center",
+                maxWidth: "500px",
+              }}
+            >
+              {SAMPLE_QUESTIONS.map((q, i) => (
+                <button
+                  key={i}
+                  onClick={() => handleSend(q.text)}
+                  disabled={loading || (usage?.remaining ?? 1) <= 0}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "0.5rem",
+                    padding: "0.75rem 1rem",
+                    background: `${q.color}15`,
+                    border: `1px solid ${q.color}30`,
+                    borderRadius: "24px",
+                    color: q.color,
+                    fontSize: "0.9rem",
+                    cursor:
+                      loading || (usage?.remaining ?? 1) <= 0
+                        ? "not-allowed"
+                        : "pointer",
+                    transition: "all 0.2s",
+                    opacity: loading || (usage?.remaining ?? 1) <= 0 ? 0.5 : 1,
+                  }}
+                  onMouseEnter={(e) => {
+                    if (!loading && (usage?.remaining ?? 1) > 0) {
+                      e.currentTarget.style.background = `${q.color}25`;
+                      e.currentTarget.style.transform = "translateY(-2px)";
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = `${q.color}15`;
+                    e.currentTarget.style.transform = "none";
+                  }}
+                >
+                  {q.icon}
+                  {q.text}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Chat Messages */}
         {messages.map((msg, i) => (
           <div
             key={i}
             style={{
               display: "flex",
               justifyContent: msg.role === "user" ? "flex-end" : "flex-start",
-              gap: "0.5rem",
+              gap: "0.75rem",
             }}
           >
             {msg.role === "bot" && (
               <div
                 style={{
-                  width: 32,
-                  height: 32,
+                  width: 36,
+                  height: 36,
                   borderRadius: "50%",
-                  background: "var(--color-bg-tertiary)",
+                  background: "linear-gradient(135deg, #8b5cf6, #ec4899)",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
                   flexShrink: 0,
                 }}
               >
-                <Sparkles size={18} className="text-purple-400" />
+                <Sparkles size={18} color="#fff" />
               </div>
             )}
 
-            <div style={{ maxWidth: "80%" }}>
+            <div style={{ maxWidth: "75%" }}>
               <div
                 style={{
-                  padding: "1rem",
-                  borderRadius: "16px",
+                  padding: "1rem 1.25rem",
+                  borderRadius: "20px",
                   background:
                     msg.role === "user"
-                      ? "var(--color-accent-primary)"
+                      ? "linear-gradient(135deg, var(--color-accent), #f59e0b)"
                       : "var(--color-bg-secondary)",
                   color:
                     msg.role === "user" ? "#fff" : "var(--color-text-primary)",
-                  lineHeight: 1.6,
-                  borderTopLeftRadius: msg.role === "bot" ? "4px" : "16px",
-                  borderTopRightRadius: msg.role === "user" ? "4px" : "16px",
-                  boxShadow: "0 2px 8px rgba(0,0,0,0.05)",
+                  lineHeight: 1.7,
+                  borderTopLeftRadius: msg.role === "bot" ? "6px" : "20px",
+                  borderTopRightRadius: msg.role === "user" ? "6px" : "20px",
+                  boxShadow:
+                    msg.role === "user"
+                      ? "0 4px 15px rgba(251, 146, 60, 0.2)"
+                      : "0 2px 8px rgba(0,0,0,0.05)",
                 }}
               >
                 {msg.text}
@@ -151,41 +295,45 @@ export function ChatInterface() {
               {msg.sources && msg.sources.length > 0 && (
                 <div
                   style={{
-                    marginTop: "0.5rem",
+                    marginTop: "0.75rem",
+                    padding: "0.75rem",
+                    background: "var(--color-bg-tertiary)",
+                    borderRadius: "12px",
                     fontSize: "0.8rem",
-                    color: "var(--color-text-tertiary)",
                   }}
                 >
                   <div
                     style={{
                       display: "flex",
                       alignItems: "center",
-                      gap: "4px",
-                      marginBottom: "4px",
+                      gap: "6px",
+                      marginBottom: "0.5rem",
+                      color: "var(--color-text-tertiary)",
                     }}
                   >
-                    <BookOpen size={12} />
-                    <span>参考にした記録:</span>
+                    <BookOpen size={14} />
+                    <span>参照した記録</span>
                   </div>
                   <div
                     style={{
                       display: "flex",
                       gap: "8px",
-                      overflowX: "auto",
-                      paddingBottom: "4px",
+                      flexWrap: "wrap",
                     }}
                   >
                     {msg.sources.map((s: any, idx) => (
                       <div
                         key={idx}
                         style={{
-                          background: "var(--color-bg-tertiary)",
-                          padding: "4px 8px",
-                          borderRadius: "4px",
-                          whiteSpace: "nowrap",
-                          maxWidth: "150px",
+                          background: "var(--color-bg-primary)",
+                          padding: "6px 10px",
+                          borderRadius: "6px",
+                          color: "var(--color-text-secondary)",
+                          maxWidth: "180px",
                           overflow: "hidden",
                           textOverflow: "ellipsis",
+                          whiteSpace: "nowrap",
+                          border: "1px solid var(--color-border)",
                         }}
                       >
                         {s.title || "無題の記録"}
@@ -199,53 +347,79 @@ export function ChatInterface() {
             {msg.role === "user" && (
               <div
                 style={{
-                  width: 32,
-                  height: 32,
+                  width: 36,
+                  height: 36,
                   borderRadius: "50%",
-                  background: "#444",
+                  background: "var(--color-bg-tertiary)",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
                   flexShrink: 0,
+                  border: "1px solid var(--color-border)",
                 }}
               >
-                <User size={18} color="#fff" />
+                <User size={18} color="var(--color-text-secondary)" />
               </div>
             )}
           </div>
         ))}
 
         {loading && (
-          <div style={{ display: "flex", gap: "0.5rem", paddingLeft: "3rem" }}>
-            <Loader2
-              className="animate-spin"
-              size={20}
-              color="var(--color-text-tertiary)"
-            />
+          <div
+            style={{ display: "flex", gap: "0.75rem", alignItems: "center" }}
+          >
+            <div
+              style={{
+                width: 36,
+                height: 36,
+                borderRadius: "50%",
+                background: "linear-gradient(135deg, #8b5cf6, #ec4899)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <Sparkles size={18} color="#fff" />
+            </div>
+            <div
+              style={{
+                padding: "1rem 1.25rem",
+                background: "var(--color-bg-secondary)",
+                borderRadius: "20px",
+                borderTopLeftRadius: "6px",
+              }}
+            >
+              <Loader2
+                className="animate-spin"
+                size={18}
+                color="var(--color-text-tertiary)"
+              />
+            </div>
           </div>
         )}
       </div>
 
       {/* Input Area */}
-      <div style={{ padding: "1rem" }}>
+      <div style={{ padding: "1rem 1.5rem 1.5rem" }}>
         {/* Usage Indicator */}
         <div
           style={{
             display: "flex",
             justifyContent: "flex-end",
-            marginBottom: "0.5rem",
+            marginBottom: "0.75rem",
           }}
         >
           <UsageIndicator featureType="rag_chat" usage={usage} />
         </div>
+
         <div
           style={{
             display: "flex",
             background: "var(--color-bg-secondary)",
-            borderRadius: "30px",
-            padding: "8px",
+            borderRadius: "28px",
+            padding: "6px",
             border: "1px solid var(--color-border)",
-            boxShadow: "0 4px 12px rgba(0,0,0,0.05)",
+            boxShadow: "0 4px 20px rgba(0,0,0,0.08)",
           }}
         >
           <input
@@ -258,39 +432,43 @@ export function ChatInterface() {
             placeholder={
               (usage?.remaining ?? 1) <= 0
                 ? "今月の利用上限に達しました"
-                : "最近の悩みは？ / あの時どう思ってたっけ？"
+                : "過去の自分に聞いてみよう..."
             }
             disabled={(usage?.remaining ?? 1) <= 0}
             style={{
               flex: 1,
               background: "transparent",
               border: "none",
-              padding: "0 1rem",
+              padding: "0.75rem 1rem",
               fontSize: "1rem",
               outline: "none",
               color: "var(--color-text-primary)",
             }}
           />
           <button
-            onClick={handleSend}
-            disabled={loading || (usage?.remaining ?? 1) <= 0}
+            onClick={() => handleSend()}
+            disabled={loading || (usage?.remaining ?? 1) <= 0 || !input.trim()}
             style={{
-              width: 40,
-              height: 40,
+              width: 44,
+              height: 44,
               borderRadius: "50%",
               background:
-                loading || (usage?.remaining ?? 1) <= 0
+                loading || (usage?.remaining ?? 1) <= 0 || !input.trim()
                   ? "var(--color-bg-tertiary)"
-                  : "var(--color-accent-primary)",
+                  : "linear-gradient(135deg, var(--color-accent), #f59e0b)",
               border: "none",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
               cursor:
-                loading || (usage?.remaining ?? 1) <= 0
+                loading || (usage?.remaining ?? 1) <= 0 || !input.trim()
                   ? "not-allowed"
                   : "pointer",
               transition: "all 0.2s",
+              boxShadow:
+                loading || (usage?.remaining ?? 1) <= 0 || !input.trim()
+                  ? "none"
+                  : "0 4px 15px rgba(251, 146, 60, 0.3)",
             }}
           >
             <Send size={18} color="#fff" />

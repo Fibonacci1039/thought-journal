@@ -7,7 +7,6 @@ import {
   PenLine,
   Inbox,
   Hash,
-  Network,
   Sparkles,
   Settings,
   Quote,
@@ -19,7 +18,6 @@ const NAV_ITEMS = [
   { label: "引用", href: "/quote", icon: <Quote size={18} /> },
   { label: "週次レビュー", href: "/weekly", icon: <Inbox size={18} /> },
   { label: "トピック", href: "/topics", icon: <Hash size={18} /> },
-  { label: "マインドマップ", href: "/graph", icon: <Network size={18} /> },
   { label: "Recall", href: "/recall", icon: <Sparkles size={18} /> },
   { label: "設定", href: "/settings", icon: <Settings size={18} /> },
 ];
