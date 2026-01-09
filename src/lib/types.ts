@@ -55,3 +55,11 @@ export type PeriodicSummary = {
   created_at: string;
   updated_at: string;
 };
+
+// Usage tracking for monetization
+export type UsageLog = {
+  id: string;
+  feature_type: "topic_analysis" | "weekly_review" | "rag_chat";
+  used_at: string;
+  metadata: Record<string, unknown>;
+};

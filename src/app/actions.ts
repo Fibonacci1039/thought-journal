@@ -12,6 +12,7 @@ import {
 } from "@/lib/storage";
 import { Entry } from "@/lib/types";
 import { generateEmbedding } from "@/lib/embeddings";
+import { checkUsageLimit, recordUsage } from "@/lib/usage";
 
 // Helper to handle Postgrest errors
 function handleDbError(e: any): { success: false; error: string } {
@@ -269,6 +270,16 @@ export async function analyzeTopicContentAction(
 
 export async function chatWithPastAction(query: string) {
   try {
+    // Check usage limit first
+    const usage = await checkUsageLimit("rag_chat");
+    if (!usage.allowed) {
+      return {
+        success: false,
+        error: "USAGE_LIMIT_EXCEEDED",
+        usage,
+      };
+    }
+
     const { createClient } = await import("@supabase/supabase-js");
     const { GoogleGenerativeAI } = await import("@google/generative-ai");
 
@@ -326,7 +337,14 @@ export async function chatWithPastAction(query: string) {
     const result = await model.generateContent(systemPrompt);
     const response = result.response.text();
 
-    return { success: true, data: { response, sources: similarEntries } };
+    // Record usage on success
+    await recordUsage("rag_chat", { query });
+
+    return {
+      success: true,
+      data: { response, sources: similarEntries },
+      usage,
+    };
   } catch (e) {
     console.error(e);
     return { success: false, error: "Chat processing failed" };

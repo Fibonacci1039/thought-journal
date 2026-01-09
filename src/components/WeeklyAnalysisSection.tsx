@@ -1,18 +1,50 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   generateWeeklyPromptAction,
   saveWeeklySummaryAction,
+  autoWeeklyAnalysisAction,
 } from "@/app/ai-actions";
 import { useRouter } from "next/navigation";
+import { checkUsageLimit } from "@/lib/usage";
+import { UsageCheckResult } from "@/lib/usage-types";
+import { UsageLimitModal } from "./UsageLimitModal";
+import { UsageIndicator } from "./UsageIndicator";
 
 export function WeeklyAnalysisSection() {
   const router = useRouter();
   const [prompt, setPrompt] = useState("");
   const [aiInput, setAiInput] = useState("");
   const [loading, setLoading] = useState(false);
+  const [autoLoading, setAutoLoading] = useState(false);
   const [mode, setMode] = useState<"IDLE" | "PROMPT_SHOWN" | "DONE">("IDLE");
+  const [usage, setUsage] = useState<UsageCheckResult | null>(null);
+  const [showLimitModal, setShowLimitModal] = useState(false);
+
+  // Fetch usage on mount
+  useEffect(() => {
+    checkUsageLimit("weekly_review").then(setUsage);
+  }, []);
+
+  const handleAutoAnalyze = async () => {
+    setAutoLoading(true);
+    try {
+      const res = await autoWeeklyAnalysisAction();
+      if (res.success && res.topicId) {
+        router.push(`/topics/${res.topicId}`);
+      } else if (res.error === "USAGE_LIMIT_EXCEEDED") {
+        if (res.usage) setUsage(res.usage);
+        setShowLimitModal(true);
+      } else {
+        alert("エラー: " + (res.error || "分析に失敗しました"));
+      }
+    } catch {
+      alert("エラーが発生しました");
+    } finally {
+      setAutoLoading(false);
+    }
+  };
 
   const handleGenerate = async () => {
     setLoading(true);
@@ -20,6 +52,14 @@ export function WeeklyAnalysisSection() {
     if (res.success && res.prompt) {
       setPrompt(res.prompt);
       setMode("PROMPT_SHOWN");
+      // Update usage from response
+      if (res.usage) {
+        setUsage(res.usage);
+      }
+    } else if (res.error === "USAGE_LIMIT_EXCEEDED") {
+      // Show limit modal
+      if (res.usage) setUsage(res.usage);
+      setShowLimitModal(true);
     } else {
       alert("エラー: " + (res.error || "プロンプト生成に失敗しました"));
     }
@@ -95,196 +135,249 @@ export function WeeklyAnalysisSection() {
   };
 
   return (
-    <div
-      style={{
-        marginTop: "2rem",
-        padding: "1.5rem",
-        borderRadius: "12px",
-        backgroundColor: "var(--color-bg-tertiary)",
-        border: "1px solid var(--color-border)",
-      }}
-    >
-      <h3
+    <>
+      <div
         style={{
-          marginBottom: "1rem",
-          fontSize: "1.2rem",
-          display: "flex",
-          alignItems: "center",
-          gap: "0.5rem",
+          marginTop: "2rem",
+          padding: "1.5rem",
+          borderRadius: "12px",
+          backgroundColor: "var(--color-bg-tertiary)",
+          border: "1px solid var(--color-border)",
         }}
       >
-        <span>📝</span> 週次レビュー (AI Analysis)
-      </h3>
-
-      <p
-        style={{
-          fontSize: "0.9rem",
-          color: "var(--color-text)",
-          lineHeight: 1.6,
-          marginBottom: "1.5rem",
-        }}
-      >
-        過去1週間のログをAIが集計し、振り返りと次週の指針を提案します。
-      </p>
-
-      {/* Step 1: Generate */}
-      {mode === "IDLE" && (
-        <button
-          onClick={handleGenerate}
-          disabled={loading}
+        <h3
           style={{
-            width: "100%",
-            padding: "1rem",
-            backgroundColor: "var(--color-accent)", // Orange for visibility
-            color: "#fff",
-            border: "none",
-            borderRadius: "8px",
-            fontSize: "1rem",
-            fontWeight: 600,
-            cursor: loading ? "wait" : "pointer",
-            boxShadow: "0 2px 8px rgba(255, 159, 10, 0.2)", // Subtler glow
-            transition: "all 0.2s ease",
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.transform = "translateY(-1px)";
-            e.currentTarget.style.boxShadow =
-              "0 4px 12px rgba(255, 159, 10, 0.3)";
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.transform = "none";
-            e.currentTarget.style.boxShadow =
-              "0 2px 8px rgba(255, 159, 10, 0.2)";
+            marginBottom: "1rem",
+            fontSize: "1.2rem",
+            display: "flex",
+            alignItems: "center",
+            gap: "0.5rem",
           }}
         >
-          {loading ? "データを収集中..." : "週次レビューを開始する"}
-        </button>
-      )}
+          <span>📝</span> 週次レビュー (AI Analysis)
+        </h3>
 
-      {/* Step 2: Copy & Paste */}
-      {mode === "PROMPT_SHOWN" && (
-        <div
-          style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}
+        <p
+          style={{
+            fontSize: "0.9rem",
+            color: "var(--color-text)",
+            lineHeight: 1.6,
+            marginBottom: "1.5rem",
+          }}
         >
-          {/* Prompt Area */}
-          <div>
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                marginBottom: "0.5rem",
-              }}
-            >
-              <label style={{ fontSize: "0.85rem", fontWeight: 600 }}>
-                1. AIへの依頼文 (コピーしてください)
-              </label>
-              <button
-                onClick={copyToClipboard}
-                style={{
-                  fontSize: "0.8rem",
-                  textDecoration: "underline",
-                  background: "none",
-                  border: "none",
-                  cursor: "pointer",
-                  color: "var(--color-accent-primary)",
-                }}
-              >
-                コピー
-              </button>
-            </div>
-            <textarea
-              readOnly
-              value={prompt}
-              style={{
-                width: "100%",
-                height: "100px", // Compact view
-                padding: "0.8rem",
-                fontSize: "0.8rem",
-                fontFamily: "monospace",
-                color: "var(--color-text-primary)",
-                border: "1px solid var(--color-border)",
-                borderRadius: "8px",
-                backgroundColor: "#1c1c1e",
-                resize: "vertical",
-              }}
-            />
-          </div>
+          過去1週間のログをAIが集計し、振り返りと次週の指針を提案します。
+        </p>
 
+        {/* Step 1: Generate */}
+        {mode === "IDLE" && (
           <div
             style={{
-              textAlign: "center",
-              fontSize: "1.2rem",
-              color: "var(--color-subtle)",
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              gap: "1rem",
             }}
           >
-            ⬇
-          </div>
-
-          {/* Input Area */}
-          <div>
-            <label
-              style={{
-                display: "block",
-                fontSize: "0.85rem",
-                fontWeight: 600,
-                marginBottom: "0.5rem",
-              }}
-            >
-              2. AIからの返信 (JSON) を貼り付け
-            </label>
-            <textarea
-              value={aiInput}
-              onChange={(e) => setAiInput(e.target.value)}
-              placeholder='{ "period_label": ... }'
+            {/* Main: Auto Analyze Button */}
+            <button
+              onClick={handleAutoAnalyze}
+              disabled={autoLoading || loading || (usage?.remaining ?? 1) <= 0}
               style={{
                 width: "100%",
-                height: "150px",
                 padding: "1rem",
-                fontSize: "0.9rem",
-                color: "var(--color-text-primary)",
-                backgroundColor: "#1c1c1e",
-                fontFamily: "monospace",
-                border: "1px solid var(--color-border)",
-                borderRadius: "8px",
-                resize: "vertical",
-              }}
-            />
-          </div>
-
-          <div style={{ display: "flex", gap: "1rem" }}>
-            <button
-              onClick={() => setMode("IDLE")}
-              style={{
-                flex: 1,
-                padding: "0.8rem",
-                backgroundColor: "transparent",
-                color: "var(--color-subtle)",
-                border: "1px solid var(--color-border)",
-                borderRadius: "8px",
-                cursor: "pointer",
-              }}
-            >
-              キャンセル
-            </button>
-            <button
-              onClick={handleSave}
-              disabled={loading || !aiInput.trim()}
-              style={{
-                flex: 2,
-                padding: "0.8rem",
-                backgroundColor: "var(--color-accent-primary)",
+                backgroundColor:
+                  (usage?.remaining ?? 1) <= 0
+                    ? "var(--color-bg-tertiary)"
+                    : "var(--color-accent)",
                 color: "#fff",
                 border: "none",
                 borderRadius: "8px",
+                fontSize: "1rem",
                 fontWeight: 600,
-                opacity: !aiInput.trim() || loading ? 0.5 : 1,
-                cursor: !aiInput.trim() || loading ? "not-allowed" : "pointer",
+                cursor:
+                  autoLoading || loading || (usage?.remaining ?? 1) <= 0
+                    ? "not-allowed"
+                    : "pointer",
+                boxShadow: "0 2px 8px rgba(255, 159, 10, 0.2)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: "0.5rem",
               }}
             >
-              {loading ? "保存中..." : "レターを受け取る (保存)"}
+              {autoLoading ? (
+                <>
+                  <span className="animate-spin">⏳</span> AI分析中...
+                </>
+              ) : (
+                <>
+                  ✨ AI自動分析
+                  <UsageIndicator
+                    featureType="weekly_review"
+                    usage={usage}
+                    compact
+                  />
+                </>
+              )}
+            </button>
+
+            {/* Secondary: Manual Prompt */}
+            <button
+              onClick={handleGenerate}
+              disabled={loading || autoLoading}
+              style={{
+                fontSize: "0.85rem",
+                fontWeight: 500,
+                padding: "0.5rem 1rem",
+                color: "var(--color-text-secondary)",
+                backgroundColor: "transparent",
+                border: "1px solid var(--color-border)",
+                borderRadius: "20px",
+                cursor: loading || autoLoading ? "not-allowed" : "pointer",
+              }}
+            >
+              {loading ? "準備中..." : "📋 手動でプロンプトを取得"}
             </button>
           </div>
-        </div>
+        )}
+
+        {/* Step 2: Copy & Paste */}
+        {mode === "PROMPT_SHOWN" && (
+          <div
+            style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}
+          >
+            {/* Prompt Area */}
+            <div>
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  marginBottom: "0.5rem",
+                }}
+              >
+                <label style={{ fontSize: "0.85rem", fontWeight: 600 }}>
+                  1. AIへの依頼文 (コピーしてください)
+                </label>
+                <button
+                  onClick={copyToClipboard}
+                  style={{
+                    fontSize: "0.8rem",
+                    textDecoration: "underline",
+                    background: "none",
+                    border: "none",
+                    cursor: "pointer",
+                    color: "var(--color-accent-primary)",
+                  }}
+                >
+                  コピー
+                </button>
+              </div>
+              <textarea
+                readOnly
+                value={prompt}
+                style={{
+                  width: "100%",
+                  height: "100px", // Compact view
+                  padding: "0.8rem",
+                  fontSize: "0.8rem",
+                  fontFamily: "monospace",
+                  color: "var(--color-text-primary)",
+                  border: "1px solid var(--color-border)",
+                  borderRadius: "8px",
+                  backgroundColor: "#1c1c1e",
+                  resize: "vertical",
+                }}
+              />
+            </div>
+
+            <div
+              style={{
+                textAlign: "center",
+                fontSize: "1.2rem",
+                color: "var(--color-subtle)",
+              }}
+            >
+              ⬇
+            </div>
+
+            {/* Input Area */}
+            <div>
+              <label
+                style={{
+                  display: "block",
+                  fontSize: "0.85rem",
+                  fontWeight: 600,
+                  marginBottom: "0.5rem",
+                }}
+              >
+                2. AIからの返信 (JSON) を貼り付け
+              </label>
+              <textarea
+                value={aiInput}
+                onChange={(e) => setAiInput(e.target.value)}
+                placeholder='{ "period_label": ... }'
+                style={{
+                  width: "100%",
+                  height: "150px",
+                  padding: "1rem",
+                  fontSize: "0.9rem",
+                  color: "var(--color-text-primary)",
+                  backgroundColor: "#1c1c1e",
+                  fontFamily: "monospace",
+                  border: "1px solid var(--color-border)",
+                  borderRadius: "8px",
+                  resize: "vertical",
+                }}
+              />
+            </div>
+
+            <div style={{ display: "flex", gap: "1rem" }}>
+              <button
+                onClick={() => setMode("IDLE")}
+                style={{
+                  flex: 1,
+                  padding: "0.8rem",
+                  backgroundColor: "transparent",
+                  color: "var(--color-subtle)",
+                  border: "1px solid var(--color-border)",
+                  borderRadius: "8px",
+                  cursor: "pointer",
+                }}
+              >
+                キャンセル
+              </button>
+              <button
+                onClick={handleSave}
+                disabled={loading || !aiInput.trim()}
+                style={{
+                  flex: 2,
+                  padding: "0.8rem",
+                  backgroundColor: "var(--color-accent-primary)",
+                  color: "#fff",
+                  border: "none",
+                  borderRadius: "8px",
+                  fontWeight: 600,
+                  opacity: !aiInput.trim() || loading ? 0.5 : 1,
+                  cursor:
+                    !aiInput.trim() || loading ? "not-allowed" : "pointer",
+                }}
+              >
+                {loading ? "保存中..." : "レターを受け取る (保存)"}
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Usage Limit Modal */}
+      {usage && (
+        <UsageLimitModal
+          isOpen={showLimitModal}
+          onClose={() => setShowLimitModal(false)}
+          featureType="weekly_review"
+          usage={usage}
+        />
       )}
-    </div>
+    </>
   );
 }

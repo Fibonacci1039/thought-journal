@@ -1,10 +1,16 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   generatePromptAction,
   saveAnalysisResultAction,
+  autoAnalyzeTopicAction,
 } from "@/app/ai-actions";
+import { checkUsageLimit } from "@/lib/usage";
+import { UsageCheckResult } from "@/lib/usage-types";
+import { UsageLimitModal } from "./UsageLimitModal";
+import { UsageIndicator } from "./UsageIndicator";
+import { useRouter } from "next/navigation";
 
 type Props = {
   topicId: string;
@@ -23,12 +29,41 @@ export function TopicAnalysisSection({
   topicName,
   latestSummary,
 }: Props) {
+  const router = useRouter();
   const [mode, setMode] = useState<Mode>("IDLE");
   const [loading, setLoading] = useState(false);
+  const [autoLoading, setAutoLoading] = useState(false);
   const [promptText, setPromptText] = useState("");
   const [jsonInput, setJsonInput] = useState("");
+  const [usage, setUsage] = useState<UsageCheckResult | null>(null);
+  const [showLimitModal, setShowLimitModal] = useState(false);
+
+  // Fetch usage on mount
+  useEffect(() => {
+    checkUsageLimit("topic_analysis").then(setUsage);
+  }, []);
 
   // -- Actions --
+
+  const handleAutoAnalyze = async () => {
+    setAutoLoading(true);
+    try {
+      const res = await autoAnalyzeTopicAction(topicId, topicName);
+      if (res.success) {
+        // Reload page to show new analysis
+        router.refresh();
+      } else if (res.error === "USAGE_LIMIT_EXCEEDED") {
+        if (res.usage) setUsage(res.usage);
+        setShowLimitModal(true);
+      } else {
+        alert(res.error || "分析に失敗しました");
+      }
+    } catch {
+      alert("エラーが発生しました");
+    } finally {
+      setAutoLoading(false);
+    }
+  };
 
   const handleGeneratePrompt = async () => {
     setLoading(true);
@@ -37,10 +72,18 @@ export function TopicAnalysisSection({
       if (res.success && res.prompt) {
         setPromptText(res.prompt);
         setMode("PROMPT_READY");
+        // Update usage from response
+        if (res.usage) {
+          setUsage(res.usage);
+        }
+      } else if (res.error === "USAGE_LIMIT_EXCEEDED") {
+        // Show limit modal
+        if (res.usage) setUsage(res.usage);
+        setShowLimitModal(true);
       } else {
         alert(res.error || "プロンプト生成に失敗しました");
       }
-    } catch (e) {
+    } catch {
       alert("エラーが発生しました");
     } finally {
       setLoading(false);
@@ -317,182 +360,246 @@ export function TopicAnalysisSection({
 
   // Operation UI (IDLE empty, or Wizard steps)
   return (
-    <section
-      style={{
-        marginBottom: "3rem",
-        padding: "1.5rem",
-        backgroundColor: "var(--color-bg-tertiary)",
-        borderRadius: "8px",
-        border: "1px solid var(--color-border)",
-      }}
-    >
-      <div
+    <>
+      <section
         style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          marginBottom: "1rem",
+          marginBottom: "3rem",
+          padding: "1.5rem",
+          backgroundColor: "var(--color-bg-tertiary)",
+          borderRadius: "8px",
+          border: "1px solid var(--color-border)",
         }}
       >
-        <h2 style={{ fontSize: "1.1rem", margin: 0 }}>
-          ▼ 時系列の変化 (AI Analysis)
-        </h2>
-      </div>
-
-      {mode === "IDLE" && (
-        <div style={{ textAlign: "center", padding: "1rem 0" }}>
-          <p
-            style={{
-              marginBottom: "1.5rem",
-              color: "var(--color-text-secondary)",
-            }}
-          >
-            ログをまとめてAIに渡し、変化を分析します。
-          </p>
-          <button
-            onClick={handleGeneratePrompt}
-            disabled={loading}
-            style={{
-              fontSize: "1rem",
-              fontWeight: 600,
-              padding: "0.8rem 1.5rem",
-              color: "#fff",
-              backgroundColor: "var(--color-accent)",
-              border: "none",
-              borderRadius: "30px",
-              cursor: loading ? "wait" : "pointer",
-              boxShadow: "0 4px 12px rgba(0,0,0,0.2)",
-            }}
-          >
-            {loading ? "生成中..." : "🪄 分析用プロンプトを作成"}
-          </button>
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            marginBottom: "1rem",
+          }}
+        >
+          <h2 style={{ fontSize: "1.1rem", margin: 0 }}>
+            ▼ 時系列の変化 (AI Analysis)
+          </h2>
         </div>
-      )}
 
-      {mode === "PROMPT_READY" && (
-        <div>
-          <p
-            style={{
-              fontSize: "0.9rem",
-              color: "var(--color-subtle)",
-              marginBottom: "0.5rem",
-            }}
-          >
-            1. 下のプロンプトをコピーしてください。
-            <br />
-            2. ChatGPT, Claude, Gemini などのAIに貼り付けて実行してください。
-          </p>
-          <textarea
-            readOnly
-            value={promptText}
-            style={{
-              width: "100%",
-              height: "150px",
-              fontSize: "0.8rem",
-              padding: "0.5rem",
-              borderRadius: "4px",
-              border: "1px solid var(--color-border)",
-              marginBottom: "1rem",
-              fontFamily: "monospace",
-              background: "var(--color-bg-primary)",
-              color: "var(--color-text-primary)",
-            }}
-          />
-          <div style={{ display: "flex", gap: "1rem" }}>
-            <button
-              onClick={handleCopyPrompt}
+        {mode === "IDLE" && (
+          <div style={{ textAlign: "center", padding: "1rem 0" }}>
+            <p
               style={{
-                flex: 1,
-                padding: "0.6rem",
-                borderRadius: "4px",
-                border: "1px solid var(--color-border)",
-                background: "var(--color-bg-tertiary)",
-                color: "var(--color-text-primary)",
-                cursor: "pointer",
-              }}
-            >
-              📋 コピー
-            </button>
-            <button
-              onClick={() => setMode("INPUT_RESULT")}
-              style={{
-                flex: 1,
-                padding: "0.6rem",
-                borderRadius: "4px",
-                background: "var(--color-accent)",
-                color: "#fff",
-                border: "none",
-                cursor: "pointer",
-              }}
-            >
-              次へ（結果を入力）→
-            </button>
-          </div>
-        </div>
-      )}
-
-      {mode === "INPUT_RESULT" && (
-        <div>
-          <p
-            style={{
-              fontSize: "0.9rem",
-              color: "var(--color-subtle)",
-              marginBottom: "0.5rem",
-            }}
-          >
-            3. AIが出力した <strong>JSON部分だけ</strong>{" "}
-            をここに貼り付けてください。
-          </p>
-          <textarea
-            value={jsonInput}
-            onChange={(e) => setJsonInput(e.target.value)}
-            placeholder='{ "current_status": "...", ... }'
-            style={{
-              width: "100%",
-              height: "150px",
-              fontSize: "0.8rem",
-              padding: "0.5rem",
-              borderRadius: "4px",
-              border: "1px solid var(--color-border)",
-              marginBottom: "1rem",
-              fontFamily: "monospace",
-              background: "var(--color-bg-primary)",
-              color: "var(--color-text-primary)",
-            }}
-          />
-          <div style={{ display: "flex", gap: "1rem" }}>
-            <button
-              onClick={() => setMode("PROMPT_READY")}
-              style={{
-                flex: 1,
-                padding: "0.6rem",
-                borderRadius: "4px",
-                border: "1px solid var(--color-border)",
-                background: "var(--color-bg-tertiary)",
+                marginBottom: "1.5rem",
                 color: "var(--color-text-secondary)",
-                cursor: "pointer",
               }}
             >
-              戻る
-            </button>
-            <button
-              onClick={handleSaveResult}
-              disabled={loading}
+              ログをまとめてAIに渡し、変化を分析します。
+            </p>
+            <div
               style={{
-                flex: 1,
-                padding: "0.6rem",
-                borderRadius: "4px",
-                background: "var(--color-accent)",
-                color: "#fff",
-                border: "none",
-                cursor: "pointer",
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                gap: "1rem",
               }}
             >
-              {loading ? "保存中..." : "💾 分析結果を保存"}
-            </button>
+              {/* Main: Auto Analyze Button */}
+              <button
+                onClick={handleAutoAnalyze}
+                disabled={
+                  autoLoading || loading || (usage?.remaining ?? 1) <= 0
+                }
+                style={{
+                  fontSize: "1rem",
+                  fontWeight: 600,
+                  padding: "1rem 2rem",
+                  color: "#fff",
+                  backgroundColor:
+                    (usage?.remaining ?? 1) <= 0
+                      ? "var(--color-bg-tertiary)"
+                      : "var(--color-accent)",
+                  border: "none",
+                  borderRadius: "30px",
+                  cursor:
+                    autoLoading || loading || (usage?.remaining ?? 1) <= 0
+                      ? "not-allowed"
+                      : "pointer",
+                  boxShadow: "0 4px 12px rgba(0,0,0,0.2)",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "0.5rem",
+                }}
+              >
+                {autoLoading ? (
+                  <>
+                    <span className="animate-spin">⏳</span> AI分析中...
+                  </>
+                ) : (
+                  <>
+                    ✨ AI自動分析
+                    <UsageIndicator
+                      featureType="topic_analysis"
+                      usage={usage}
+                      compact
+                    />
+                  </>
+                )}
+              </button>
+
+              {/* Secondary: Manual Prompt */}
+              <button
+                onClick={handleGeneratePrompt}
+                disabled={loading || autoLoading}
+                style={{
+                  fontSize: "0.85rem",
+                  fontWeight: 500,
+                  padding: "0.5rem 1rem",
+                  color: "var(--color-text-secondary)",
+                  backgroundColor: "transparent",
+                  border: "1px solid var(--color-border)",
+                  borderRadius: "20px",
+                  cursor: loading || autoLoading ? "not-allowed" : "pointer",
+                }}
+              >
+                {loading ? "準備中..." : "📋 手動でプロンプトを取得"}
+              </button>
+            </div>
           </div>
-        </div>
+        )}
+
+        {mode === "PROMPT_READY" && (
+          <div>
+            <p
+              style={{
+                fontSize: "0.9rem",
+                color: "var(--color-subtle)",
+                marginBottom: "0.5rem",
+              }}
+            >
+              1. 下のプロンプトをコピーしてください。
+              <br />
+              2. ChatGPT, Claude, Gemini などのAIに貼り付けて実行してください。
+            </p>
+            <textarea
+              readOnly
+              value={promptText}
+              style={{
+                width: "100%",
+                height: "150px",
+                fontSize: "0.8rem",
+                padding: "0.5rem",
+                borderRadius: "4px",
+                border: "1px solid var(--color-border)",
+                marginBottom: "1rem",
+                fontFamily: "monospace",
+                background: "var(--color-bg-primary)",
+                color: "var(--color-text-primary)",
+              }}
+            />
+            <div style={{ display: "flex", gap: "1rem" }}>
+              <button
+                onClick={handleCopyPrompt}
+                style={{
+                  flex: 1,
+                  padding: "0.6rem",
+                  borderRadius: "4px",
+                  border: "1px solid var(--color-border)",
+                  background: "var(--color-bg-tertiary)",
+                  color: "var(--color-text-primary)",
+                  cursor: "pointer",
+                }}
+              >
+                📋 コピー
+              </button>
+              <button
+                onClick={() => setMode("INPUT_RESULT")}
+                style={{
+                  flex: 1,
+                  padding: "0.6rem",
+                  borderRadius: "4px",
+                  background: "var(--color-accent)",
+                  color: "#fff",
+                  border: "none",
+                  cursor: "pointer",
+                }}
+              >
+                次へ（結果を入力）→
+              </button>
+            </div>
+          </div>
+        )}
+
+        {mode === "INPUT_RESULT" && (
+          <div>
+            <p
+              style={{
+                fontSize: "0.9rem",
+                color: "var(--color-subtle)",
+                marginBottom: "0.5rem",
+              }}
+            >
+              3. AIが出力した <strong>JSON部分だけ</strong>{" "}
+              をここに貼り付けてください。
+            </p>
+            <textarea
+              value={jsonInput}
+              onChange={(e) => setJsonInput(e.target.value)}
+              placeholder='{ "current_status": "...", ... }'
+              style={{
+                width: "100%",
+                height: "150px",
+                fontSize: "0.8rem",
+                padding: "0.5rem",
+                borderRadius: "4px",
+                border: "1px solid var(--color-border)",
+                marginBottom: "1rem",
+                fontFamily: "monospace",
+                background: "var(--color-bg-primary)",
+                color: "var(--color-text-primary)",
+              }}
+            />
+            <div style={{ display: "flex", gap: "1rem" }}>
+              <button
+                onClick={() => setMode("PROMPT_READY")}
+                style={{
+                  flex: 1,
+                  padding: "0.6rem",
+                  borderRadius: "4px",
+                  border: "1px solid var(--color-border)",
+                  background: "var(--color-bg-tertiary)",
+                  color: "var(--color-text-secondary)",
+                  cursor: "pointer",
+                }}
+              >
+                戻る
+              </button>
+              <button
+                onClick={handleSaveResult}
+                disabled={loading}
+                style={{
+                  flex: 1,
+                  padding: "0.6rem",
+                  borderRadius: "4px",
+                  background: "var(--color-accent)",
+                  color: "#fff",
+                  border: "none",
+                  cursor: "pointer",
+                }}
+              >
+                {loading ? "保存中..." : "💾 分析結果を保存"}
+              </button>
+            </div>
+          </div>
+        )}
+      </section>
+
+      {/* Usage Limit Modal */}
+      {usage && (
+        <UsageLimitModal
+          isOpen={showLimitModal}
+          onClose={() => setShowLimitModal(false)}
+          featureType="topic_analysis"
+          usage={usage}
+        />
       )}
-    </section>
+    </>
   );
 }

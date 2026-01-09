@@ -3,6 +3,7 @@
 import { getEntries } from "@/lib/storage";
 import { supabase } from "@/lib/supabase";
 import { revalidatePath } from "next/cache";
+import { checkUsageLimit, recordUsage } from "@/lib/usage";
 
 // 1. Define Output Schema (for Prompt Engineering)
 const ANALYSIS_SCHEMA = `
@@ -23,6 +24,16 @@ const ANALYSIS_SCHEMA = `
  */
 export async function generatePromptAction(topicId: string, topicName: string) {
   try {
+    // Check usage limit first
+    const usage = await checkUsageLimit("topic_analysis");
+    if (!usage.allowed) {
+      return {
+        success: false,
+        error: "USAGE_LIMIT_EXCEEDED",
+        usage,
+      };
+    }
+
     // A. Fetch Data
     const allEntries = await getEntries();
     const topicEntries = allEntries
@@ -70,7 +81,10 @@ ${logText}
 ${ANALYSIS_SCHEMA}
     `;
 
-    return { success: true, prompt };
+    // Record usage on success
+    await recordUsage("topic_analysis", { topicId, topicName });
+
+    return { success: true, prompt, usage };
   } catch (e: any) {
     console.error("Generate Prompt Error:", e);
     return { success: false, error: "プロンプト生成に失敗しました" };
@@ -142,6 +156,16 @@ const WEEKLY_ANALYSIS_SCHEMA = `
  */
 export async function generateWeeklyPromptAction() {
   try {
+    // Check usage limit first
+    const usage = await checkUsageLimit("weekly_review");
+    if (!usage.allowed) {
+      return {
+        success: false,
+        error: "USAGE_LIMIT_EXCEEDED",
+        usage,
+      };
+    }
+
     const allEntries = await getEntries();
 
     // Filter last 7 days
@@ -190,7 +214,10 @@ ${logText}
 ${WEEKLY_ANALYSIS_SCHEMA}
     `;
 
-    return { success: true, prompt };
+    // Record usage on success
+    await recordUsage("weekly_review");
+
+    return { success: true, prompt, usage };
   } catch (e: any) {
     console.error("Generate Weekly Prompt Error:", e);
     return { success: false, error: "プロンプト生成に失敗しました" };
@@ -265,12 +292,294 @@ export async function saveWeeklySummaryAction(jsonString: string) {
 
     revalidatePath(`/topics/${topicId}`);
     return { success: true, topicId };
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error("Save Weekly Error:", e);
     // Return detailed error for debugging
+    const errorMessage = e instanceof Error ? e.message : JSON.stringify(e);
     return {
       success: false,
-      error: `保存に失敗しました: ${e?.message || JSON.stringify(e)}`,
+      error: `保存に失敗しました: ${errorMessage}`,
     };
+  }
+}
+
+// --- AUTO ANALYSIS (Phase 2) ---
+
+/**
+ * 1クリックでトピック分析を実行し、結果を保存する
+ * Gemini APIを直接呼び出す
+ */
+export async function autoAnalyzeTopicAction(
+  topicId: string,
+  topicName: string
+) {
+  try {
+    // 1. Check usage limit
+    const usage = await checkUsageLimit("topic_analysis");
+    if (!usage.allowed) {
+      return {
+        success: false,
+        error: "USAGE_LIMIT_EXCEEDED",
+        usage,
+      };
+    }
+
+    // 2. Fetch Data
+    const allEntries = await getEntries();
+    const topicEntries = allEntries
+      .filter((e) => e.topic_ids.includes(topicId))
+      .sort(
+        (a, b) =>
+          new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+      );
+
+    if (topicEntries.length === 0) {
+      return { success: false, error: "データが足りません" };
+    }
+
+    // 3. Construct Prompt
+    const logText = topicEntries
+      .map((e) => {
+        const date = new Date(e.created_at).toISOString().split("T")[0];
+        const aiData =
+          e.ai_view && Object.keys(e.ai_view).length > 1
+            ? JSON.stringify(e.ai_view)
+            : "";
+        return `[${date}] Human: ${e.human_view}\n${
+          aiData ? `      AI Data: ${aiData}` : ""
+        }`;
+      })
+      .join("\n");
+
+    const prompt = `
+あなたは専属のコーチ兼分析AIです。
+以下のジャーナリングログ（時系列）を分析し、ユーザーの「変化」と「次のステップ」を抽出してください。
+
+# ログデータ (Topic: ${topicName})
+${logText}
+
+# 分析要件
+1. 行間の意図を読む: 感情の変化・価値観の葛藤・行動パターンの変容を読み取ってください。
+2. 自然な対話調で: 親しい知的な友人のような、自然な日本語（です・ます調）で。
+3. 転換点を見つける: 今が「安定」「変化の渦中」「停滞」のどれかを判断。
+4. 深い問い: 見逃している視点や核心に迫る問いを。
+
+# 出力形式 (JSON)
+以下のJSON形式のみを出力。Markdownコードブロック不要。
+${ANALYSIS_SCHEMA}
+    `;
+
+    // 4. Call Gemini API
+    const { GoogleGenerativeAI } = await import("@google/generative-ai");
+    const apiKey = process.env.GEMINI_API_KEY;
+
+    if (!apiKey) {
+      return { success: false, error: "API Key not configured" };
+    }
+
+    const genAI = new GoogleGenerativeAI(apiKey);
+    const model = genAI.getGenerativeModel({ model: "gemini-pro" });
+
+    const result = await model.generateContent(prompt);
+    const responseText = result.response.text();
+
+    // 5. Parse JSON from response
+    let aiKnowledge;
+    try {
+      // Clean up potential markdown formatting
+      const cleanedJson = responseText
+        .replace(/```json/g, "")
+        .replace(/```/g, "")
+        .trim();
+
+      // Try to extract JSON object
+      const firstOpen = cleanedJson.indexOf("{");
+      const lastClose = cleanedJson.lastIndexOf("}");
+      if (firstOpen !== -1 && lastClose !== -1 && lastClose > firstOpen) {
+        aiKnowledge = JSON.parse(
+          cleanedJson.substring(firstOpen, lastClose + 1)
+        );
+      } else {
+        aiKnowledge = JSON.parse(cleanedJson);
+      }
+    } catch (parseError) {
+      console.error("JSON Parse Error:", parseError, responseText);
+      return {
+        success: false,
+        error: "AI応答の解析に失敗しました。再試行してください。",
+      };
+    }
+
+    // 6. Save to Database
+    const now = new Date();
+    const { error: dbError } = await supabase
+      .from("periodic_summaries")
+      .insert({
+        topic_id: topicId,
+        period_start: now.toISOString(),
+        period_end: now.toISOString(),
+        human_summary: aiKnowledge.reason || "AI自動分析",
+        ai_knowledge: aiKnowledge,
+      });
+
+    if (dbError) throw dbError;
+
+    // 7. Record usage
+    await recordUsage("topic_analysis", { topicId, topicName, auto: true });
+
+    revalidatePath(`/topics/${topicId}`);
+    return { success: true, data: aiKnowledge, usage };
+  } catch (e: unknown) {
+    console.error("Auto Analyze Error:", e);
+    const errorMessage = e instanceof Error ? e.message : "分析に失敗しました";
+    return { success: false, error: errorMessage };
+  }
+}
+
+/**
+ * 週次レビューを自動実行
+ * Gemini APIを直接呼び出す
+ */
+export async function autoWeeklyAnalysisAction() {
+  try {
+    // 1. Check usage limit
+    const usage = await checkUsageLimit("weekly_review");
+    if (!usage.allowed) {
+      return {
+        success: false,
+        error: "USAGE_LIMIT_EXCEEDED",
+        usage,
+      };
+    }
+
+    const allEntries = await getEntries();
+
+    // Filter last 7 days
+    const now = new Date();
+    const oneWeekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+
+    const weeklyEntries = allEntries
+      .filter((e) => new Date(e.created_at) >= oneWeekAgo)
+      .sort(
+        (a, b) =>
+          new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+      );
+
+    if (weeklyEntries.length === 0) {
+      return { success: false, error: "直近1週間のデータがありません" };
+    }
+
+    // 2. Construct Prompt
+    const logText = weeklyEntries
+      .map((e) => {
+        const date = new Date(e.created_at).toISOString().split("T")[0];
+        const aiData =
+          e.ai_view && Object.keys(e.ai_view).length > 1
+            ? JSON.stringify(e.ai_view)
+            : "";
+        return `[${date}] Human: ${e.human_view}\n${
+          aiData ? `      AI Data: ${aiData}` : ""
+        }`;
+      })
+      .join("\n");
+
+    const prompt = `
+あなたは「編集者兼ライフコーチ」です。
+以下の1週間分のログを分析し、週刊インサイト・レターを作成してください。
+
+# ログデータ (Last 7 Days)
+${logText}
+
+# 分析の視点
+1. Dots to Lines: 個々の出来事をつなぎ、テーマや傾向を見出す
+2. Hidden Emotions: 表面の言葉の裏にある感情や欲求を拾う
+3. Celebrating Small Wins: 見逃している小さな前進を称賛
+
+# 出力形式 (JSON)
+${WEEKLY_ANALYSIS_SCHEMA}
+    `;
+
+    // 3. Call Gemini API
+    const { GoogleGenerativeAI } = await import("@google/generative-ai");
+    const apiKey = process.env.GEMINI_API_KEY;
+
+    if (!apiKey) {
+      return { success: false, error: "API Key not configured" };
+    }
+
+    const genAI = new GoogleGenerativeAI(apiKey);
+    const model = genAI.getGenerativeModel({ model: "gemini-pro" });
+
+    const result = await model.generateContent(prompt);
+    const responseText = result.response.text();
+
+    // 4. Parse JSON
+    let aiKnowledge;
+    try {
+      const cleanedJson = responseText
+        .replace(/```json/g, "")
+        .replace(/```/g, "")
+        .trim();
+
+      const firstOpen = cleanedJson.indexOf("{");
+      const lastClose = cleanedJson.lastIndexOf("}");
+      if (firstOpen !== -1 && lastClose !== -1 && lastClose > firstOpen) {
+        aiKnowledge = JSON.parse(
+          cleanedJson.substring(firstOpen, lastClose + 1)
+        );
+      } else {
+        aiKnowledge = JSON.parse(cleanedJson);
+      }
+    } catch (parseError) {
+      console.error("JSON Parse Error:", parseError, responseText);
+      return {
+        success: false,
+        error: "AI応答の解析に失敗しました。再試行してください。",
+      };
+    }
+
+    // 5. Find or Create "Weekly Review" Topic
+    const { data: topics } = await supabase
+      .from("topics")
+      .select("*")
+      .eq("name", "Weekly Review");
+    let topicId;
+
+    if (topics && topics.length > 0) {
+      topicId = topics[0].id;
+    } else {
+      const { data: newTopic, error } = await supabase
+        .from("topics")
+        .insert({ name: "Weekly Review" })
+        .select()
+        .single();
+      if (error) throw error;
+      topicId = newTopic.id;
+    }
+
+    // 6. Save
+    const toDateString = (d: Date) => d.toISOString().split("T")[0];
+
+    const { error: dbError } = await supabase
+      .from("periodic_summaries")
+      .insert({
+        topic_id: topicId,
+        period_start: toDateString(oneWeekAgo),
+        period_end: toDateString(now),
+        human_summary: aiKnowledge.theme || "週間振り返り",
+        ai_knowledge: aiKnowledge,
+      });
+
+    if (dbError) throw dbError;
+
+    // 7. Record usage
+    await recordUsage("weekly_review", { auto: true });
+
+    revalidatePath(`/topics/${topicId}`);
+    return { success: true, topicId, data: aiKnowledge, usage };
+  } catch (e: unknown) {
+    console.error("Auto Weekly Error:", e);
+    const errorMessage = e instanceof Error ? e.message : "分析に失敗しました";
+    return { success: false, error: errorMessage };
   }
 }

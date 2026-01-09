@@ -3,6 +3,10 @@
 import { useState, useRef, useEffect } from "react";
 import { Send, User, Loader2, BookOpen, Sparkles } from "lucide-react";
 import { chatWithPastAction } from "@/app/actions";
+import { checkUsageLimit } from "@/lib/usage";
+import { UsageCheckResult } from "@/lib/usage-types";
+import { UsageLimitModal } from "./UsageLimitModal";
+import { UsageIndicator } from "./UsageIndicator";
 
 export function ChatInterface() {
   const [messages, setMessages] = useState<
@@ -16,6 +20,13 @@ export function ChatInterface() {
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const [usage, setUsage] = useState<UsageCheckResult | null>(null);
+  const [showLimitModal, setShowLimitModal] = useState(false);
+
+  // Fetch usage on mount
+  useEffect(() => {
+    checkUsageLimit("rag_chat").then(setUsage);
+  }, []);
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -42,6 +53,15 @@ export function ChatInterface() {
             sources: result.data.sources,
           },
         ]);
+        // Update usage from response
+        if (result.usage) {
+          setUsage(result.usage);
+        }
+      } else if (result.error === "USAGE_LIMIT_EXCEEDED") {
+        // Show limit modal and remove the user message
+        if (result.usage) setUsage(result.usage);
+        setShowLimitModal(true);
+        setMessages((prev) => prev.slice(0, -1)); // Remove last user message
       } else {
         setMessages((prev) => [
           ...prev,
@@ -208,6 +228,16 @@ export function ChatInterface() {
 
       {/* Input Area */}
       <div style={{ padding: "1rem" }}>
+        {/* Usage Indicator */}
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "flex-end",
+            marginBottom: "0.5rem",
+          }}
+        >
+          <UsageIndicator featureType="rag_chat" usage={usage} />
+        </div>
         <div
           style={{
             display: "flex",
@@ -225,7 +255,12 @@ export function ChatInterface() {
             onKeyDown={(e) =>
               e.key === "Enter" && !e.nativeEvent.isComposing && handleSend()
             }
-            placeholder="最近の悩みは？ / あの時どう思ってたっけ？"
+            placeholder={
+              (usage?.remaining ?? 1) <= 0
+                ? "今月の利用上限に達しました"
+                : "最近の悩みは？ / あの時どう思ってたっけ？"
+            }
+            disabled={(usage?.remaining ?? 1) <= 0}
             style={{
               flex: 1,
               background: "transparent",
@@ -238,19 +273,23 @@ export function ChatInterface() {
           />
           <button
             onClick={handleSend}
-            disabled={loading}
+            disabled={loading || (usage?.remaining ?? 1) <= 0}
             style={{
               width: 40,
               height: 40,
               borderRadius: "50%",
-              background: loading
-                ? "var(--color-bg-tertiary)"
-                : "var(--color-accent-primary)",
+              background:
+                loading || (usage?.remaining ?? 1) <= 0
+                  ? "var(--color-bg-tertiary)"
+                  : "var(--color-accent-primary)",
               border: "none",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              cursor: loading ? "default" : "pointer",
+              cursor:
+                loading || (usage?.remaining ?? 1) <= 0
+                  ? "not-allowed"
+                  : "pointer",
               transition: "all 0.2s",
             }}
           >
@@ -258,6 +297,16 @@ export function ChatInterface() {
           </button>
         </div>
       </div>
+
+      {/* Usage Limit Modal */}
+      {usage && (
+        <UsageLimitModal
+          isOpen={showLimitModal}
+          onClose={() => setShowLimitModal(false)}
+          featureType="rag_chat"
+          usage={usage}
+        />
+      )}
     </div>
   );
 }
