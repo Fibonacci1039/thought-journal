@@ -1,6 +1,8 @@
 "use client";
 
+import { useState } from "react";
 import { UsageCheckResult, FeatureType, USAGE_LIMITS } from "@/lib/usage-types";
+import { Sparkles, Crown, Loader2 } from "lucide-react";
 
 interface Props {
   isOpen: boolean;
@@ -21,6 +23,8 @@ export function UsageLimitModal({
   featureType,
   usage,
 }: Props) {
+  const [isUpgrading, setIsUpgrading] = useState(false);
+
   if (!isOpen) return null;
 
   const label = FEATURE_LABELS[featureType];
@@ -32,6 +36,31 @@ export function UsageLimitModal({
   const daysUntilReset = Math.ceil(
     (nextMonth.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)
   );
+
+  const handleUpgrade = async () => {
+    setIsUpgrading(true);
+    try {
+      const res = await fetch("/api/checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: "", // Will be filled by user in Stripe checkout
+        }),
+      });
+
+      const data = await res.json();
+
+      if (data.url) {
+        window.location.href = data.url;
+      } else {
+        console.error("No checkout URL returned");
+        setIsUpgrading(false);
+      }
+    } catch (error) {
+      console.error("Upgrade error:", error);
+      setIsUpgrading(false);
+    }
+  };
 
   return (
     <div className="usage-limit-overlay" onClick={onClose}>
@@ -49,15 +78,38 @@ export function UsageLimitModal({
         </div>
 
         <div className="usage-limit-promo">
-          <div className="promo-badge">Pro</div>
+          <div className="promo-badge">
+            <Crown size={12} style={{ marginRight: "4px" }} />
+            Pro
+          </div>
           <div className="promo-content">
             <p className="promo-title">Pro にアップグレードして無制限に</p>
-            <p className="promo-description">
-              全ての分析機能が使い放題。変化ダッシュボードも利用可能に。
-            </p>
+            <ul className="promo-features">
+              <li>✓ 全ての分析機能が使い放題</li>
+              <li>✓ AI自動分析が無制限</li>
+              <li>✓ 優先サポート</li>
+            </ul>
           </div>
-          <button className="promo-button" disabled>
-            Coming Soon
+          <button
+            className="promo-button"
+            onClick={handleUpgrade}
+            disabled={isUpgrading}
+          >
+            {isUpgrading ? (
+              <>
+                <Loader2
+                  size={16}
+                  className="animate-spin"
+                  style={{ marginRight: "6px" }}
+                />
+                処理中...
+              </>
+            ) : (
+              <>
+                <Sparkles size={16} style={{ marginRight: "6px" }} />
+                Pro にアップグレード
+              </>
+            )}
           </button>
         </div>
 

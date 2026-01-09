@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",
+    "@stripe/stripe-js": "^8.6.1",
     "@supabase/supabase-js": "^2.89.0",
     "@types/dagre": "^0.7.53",
     "dagre": "^0.8.5",
@@ -20,7 +21,8 @@
     "react-dom": "19.2.3",
     "react-force-graph-2d": "^1.29.0",
     "reactflow": "^11.11.4",
-    "server-only": "^0.0.1"
+    "server-only": "^0.0.1",
+    "stripe": "^20.1.2"
   },
   "devDependencies": {
     "@types/node": "^20",
