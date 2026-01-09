@@ -206,15 +206,14 @@ export async function analyzeTopicContentAction(
   entries: { id: string; title: string; human_view: string }[]
 ) {
   try {
-    const { GoogleGenerativeAI } = await import("@google/generative-ai");
-    const apiKey = process.env.GEMINI_API_KEY;
+    const Groq = (await import("groq-sdk")).default;
+    const apiKey = process.env.GROQ_API_KEY;
 
     if (!apiKey) {
       return { success: false, error: "API Key not configured" };
     }
 
-    const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-lite" });
+    const groq = new Groq({ apiKey });
 
     // Limit payload to avoid token limits (summarize if needed in future)
     const entriesText = entries
@@ -246,12 +245,27 @@ export async function analyzeTopicContentAction(
      ${entriesText}
      `;
 
-    const result = await model.generateContent(prompt);
-    const response = result.response;
-    const text = response.text();
+    const completion = await groq.chat.completions.create({
+      messages: [
+        {
+          role: "system",
+          content:
+            "You are a helpful assistant that organizes journal entries into semantic groups and returns structured JSON responses.",
+        },
+        {
+          role: "user",
+          content: prompt,
+        },
+      ],
+      model: "llama-3.3-70b-versatile",
+      response_format: { type: "json_object" },
+      temperature: 0.5,
+    });
+
+    const response = completion.choices[0]?.message?.content || "";
 
     // Clean up potential markdown formatting if model ignores instruction
-    const cleanText = text
+    const cleanText = response
       .replace(/```json/g, "")
       .replace(/```/g, "")
       .trim();
@@ -281,7 +295,6 @@ export async function chatWithPastAction(query: string) {
     }
 
     const { createClient } = await import("@supabase/supabase-js");
-    const { GoogleGenerativeAI } = await import("@google/generative-ai");
 
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
     const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
@@ -310,9 +323,9 @@ export async function chatWithPastAction(query: string) {
     }
 
     // 3. Generate Answer
-    const apiKey = process.env.GEMINI_API_KEY!;
-    const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-lite" });
+    const Groq = (await import("groq-sdk")).default;
+    const apiKey = process.env.GROQ_API_KEY!;
+    const groq = new Groq({ apiKey });
 
     const contextText =
       (similarEntries as any[])
@@ -334,8 +347,23 @@ export async function chatWithPastAction(query: string) {
      - Be empathetic and thoughtful.
      `;
 
-    const result = await model.generateContent(systemPrompt);
-    const response = result.response.text();
+    const completion = await groq.chat.completions.create({
+      messages: [
+        {
+          role: "system",
+          content:
+            "You are a helpful assistant that answers questions based on the user's journal entries.",
+        },
+        {
+          role: "user",
+          content: systemPrompt,
+        },
+      ],
+      model: "llama-3.3-70b-versatile",
+      temperature: 0.7,
+    });
+
+    const response = completion.choices[0]?.message?.content || "";
 
     // Record usage on success
     await recordUsage("rag_chat", { query });

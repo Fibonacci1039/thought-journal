@@ -369,19 +369,34 @@ ${logText}
 ${ANALYSIS_SCHEMA}
     `;
 
-    // 4. Call Gemini API
-    const { GoogleGenerativeAI } = await import("@google/generative-ai");
-    const apiKey = process.env.GEMINI_API_KEY;
+    // 4. Call Groq API
+    const Groq = (await import("groq-sdk")).default;
+    const apiKey = process.env.GROQ_API_KEY;
 
     if (!apiKey) {
       return { success: false, error: "API Key not configured" };
     }
 
-    const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-lite" });
+    const groq = new Groq({ apiKey });
 
-    const result = await model.generateContent(prompt);
-    const responseText = result.response.text();
+    const completion = await groq.chat.completions.create({
+      messages: [
+        {
+          role: "system",
+          content:
+            "You are a helpful assistant that analyzes journal entries and returns structured JSON responses.",
+        },
+        {
+          role: "user",
+          content: prompt,
+        },
+      ],
+      model: "llama-3.3-70b-versatile",
+      response_format: { type: "json_object" },
+      temperature: 0.7,
+    });
+
+    const responseText = completion.choices[0]?.message?.content || "";
 
     // 5. Parse JSON from response
     let aiKnowledge;
@@ -499,19 +514,34 @@ ${logText}
 ${WEEKLY_ANALYSIS_SCHEMA}
     `;
 
-    // 3. Call Gemini API
-    const { GoogleGenerativeAI } = await import("@google/generative-ai");
-    const apiKey = process.env.GEMINI_API_KEY;
+    // 3. Call Groq API
+    const Groq = (await import("groq-sdk")).default;
+    const apiKey = process.env.GROQ_API_KEY;
 
     if (!apiKey) {
       return { success: false, error: "API Key not configured" };
     }
 
-    const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-lite" });
+    const groq = new Groq({ apiKey });
 
-    const result = await model.generateContent(prompt);
-    const responseText = result.response.text();
+    const completion = await groq.chat.completions.create({
+      messages: [
+        {
+          role: "system",
+          content:
+            "You are a helpful assistant that analyzes journal entries and returns structured JSON responses.",
+        },
+        {
+          role: "user",
+          content: prompt,
+        },
+      ],
+      model: "llama-3.3-70b-versatile",
+      response_format: { type: "json_object" },
+      temperature: 0.7,
+    });
+
+    const responseText = completion.choices[0]?.message?.content || "";
 
     // 4. Parse JSON
     let aiKnowledge;
