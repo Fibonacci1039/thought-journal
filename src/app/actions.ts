@@ -214,7 +214,7 @@ export async function analyzeTopicContentAction(
     }
 
     const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-002" });
+    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-lite" });
 
     // Limit payload to avoid token limits (summarize if needed in future)
     const entriesText = entries
@@ -312,7 +312,7 @@ export async function chatWithPastAction(query: string) {
     // 3. Generate Answer
     const apiKey = process.env.GEMINI_API_KEY!;
     const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-002" });
+    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-lite" });
 
     const contextText =
       (similarEntries as any[])
