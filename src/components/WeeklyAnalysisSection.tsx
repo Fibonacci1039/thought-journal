@@ -168,6 +168,83 @@ export function WeeklyAnalysisSection() {
           過去1週間のログをAIが集計し、振り返りと次週の指針を提案します。
         </p>
 
+        {/* Preview Cards - Show what users will get */}
+        {mode === "IDLE" && (
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))",
+              gap: "0.75rem",
+              marginBottom: "1.5rem",
+              opacity: 0.6,
+            }}
+          >
+            <div
+              style={{
+                padding: "1rem",
+                background: "var(--color-bg-primary)",
+                borderRadius: "10px",
+                border: "1px dashed var(--color-border)",
+                textAlign: "center",
+              }}
+            >
+              <div style={{ fontSize: "1.5rem", marginBottom: "0.25rem" }}>
+                🎯
+              </div>
+              <div
+                style={{
+                  fontSize: "0.75rem",
+                  color: "var(--color-text-tertiary)",
+                }}
+              >
+                今週のテーマ
+              </div>
+            </div>
+            <div
+              style={{
+                padding: "1rem",
+                background: "var(--color-bg-primary)",
+                borderRadius: "10px",
+                border: "1px dashed var(--color-border)",
+                textAlign: "center",
+              }}
+            >
+              <div style={{ fontSize: "1.5rem", marginBottom: "0.25rem" }}>
+                💡
+              </div>
+              <div
+                style={{
+                  fontSize: "0.75rem",
+                  color: "var(--color-text-tertiary)",
+                }}
+              >
+                インサイト
+              </div>
+            </div>
+            <div
+              style={{
+                padding: "1rem",
+                background: "var(--color-bg-primary)",
+                borderRadius: "10px",
+                border: "1px dashed var(--color-border)",
+                textAlign: "center",
+              }}
+            >
+              <div style={{ fontSize: "1.5rem", marginBottom: "0.25rem" }}>
+                🚀
+              </div>
+              <div
+                style={{
+                  fontSize: "0.75rem",
+                  color: "var(--color-text-tertiary)",
+                }}
+              >
+                来週の指針
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Step 1: Generate */}
         {mode === "IDLE" && (
           <div

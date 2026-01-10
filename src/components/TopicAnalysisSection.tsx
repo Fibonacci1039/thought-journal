@@ -285,29 +285,53 @@ export function TopicAnalysisSection({
                 style={{
                   padding: "1.5rem",
                   borderRadius: "12px",
-                  background: "var(--color-bg-tertiary)",
-                  border: "1px solid var(--color-border)",
+                  background:
+                    "linear-gradient(135deg, rgba(139, 92, 246, 0.1), rgba(168, 85, 247, 0.05))",
+                  border: "1px solid rgba(139, 92, 246, 0.3)",
                   boxShadow: "0 2px 8px rgba(0,0,0,0.04)",
                 }}
               >
                 <div
                   style={{
                     fontSize: "0.85rem",
-                    color: "var(--color-subtle)",
+                    color: "#a855f7",
                     marginBottom: "0.5rem",
+                    fontWeight: 500,
                   }}
                 >
-                  次の問い
+                  💡 次の問い
                 </div>
                 <div
                   style={{
                     fontSize: "1.1rem",
                     fontWeight: 600,
-                    marginBottom: "0.8rem",
+                    marginBottom: "1rem",
+                    color: "var(--color-text-primary)",
                   }}
                 >
                   {data.next_question ? `「${data.next_question}」` : "-"}
                 </div>
+                {data.next_question && (
+                  <button
+                    onClick={() => router.push(`/new`)}
+                    style={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: "0.5rem",
+                      padding: "0.6rem 1rem",
+                      background: "#a855f7",
+                      color: "#fff",
+                      border: "none",
+                      borderRadius: "8px",
+                      cursor: "pointer",
+                      fontSize: "0.85rem",
+                      fontWeight: 500,
+                      transition: "all 0.2s",
+                    }}
+                  >
+                    ✏️ このテーマで記録する
+                  </button>
+                )}
               </div>
             </>
           )}

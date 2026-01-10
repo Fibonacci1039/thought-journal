@@ -493,14 +493,30 @@ export function EntryList({
                                     onClick={(e) => e.stopPropagation()}
                                     style={{
                                       fontSize: "0.75rem",
-                                      color: "var(--color-accent-secondary)",
-                                      background: "rgba(159, 209, 57, 0.15)",
-                                      padding: "2px 8px",
-                                      borderRadius: "12px",
-                                      display: "flex",
+                                      color: "#10b981",
+                                      background:
+                                        "linear-gradient(135deg, rgba(16, 185, 129, 0.15), rgba(52, 211, 153, 0.1))",
+                                      border:
+                                        "1px solid rgba(16, 185, 129, 0.3)",
+                                      padding: "3px 10px",
+                                      borderRadius: "14px",
+                                      display: "inline-flex",
                                       alignItems: "center",
                                       gap: "4px",
                                       textDecoration: "none",
+                                      fontWeight: 500,
+                                      transition: "all 0.2s",
+                                    }}
+                                    onMouseEnter={(e) => {
+                                      e.currentTarget.style.background =
+                                        "rgba(16, 185, 129, 0.25)";
+                                      e.currentTarget.style.transform =
+                                        "translateY(-1px)";
+                                    }}
+                                    onMouseLeave={(e) => {
+                                      e.currentTarget.style.background =
+                                        "linear-gradient(135deg, rgba(16, 185, 129, 0.15), rgba(52, 211, 153, 0.1))";
+                                      e.currentTarget.style.transform = "none";
                                     }}
                                   >
                                     <Hash size={10} />{" "}
