@@ -97,25 +97,33 @@ export function JournalingStarter({ topics }: Props) {
         >
           <h1
             style={{
-              fontSize: "2rem",
+              fontSize: "1.75rem",
               marginBottom: "0.75rem",
               background:
                 "linear-gradient(135deg, var(--color-accent), var(--color-accent-secondary))",
               WebkitBackgroundClip: "text",
               WebkitTextFillColor: "transparent",
               backgroundClip: "text",
+              wordBreak: "keep-all",
+              overflowWrap: "break-word",
             }}
           >
-            今日の気持ちを記録しよう
+            今日の気持ちを
+            <br />
+            記録しよう
           </h1>
           <p
             style={{
               color: "var(--color-text-tertiary)",
-              fontSize: "1rem",
+              fontSize: "0.95rem",
               marginBottom: "2rem",
+              wordBreak: "keep-all",
+              overflowWrap: "break-word",
+              maxWidth: "320px",
+              margin: "0 auto 2rem",
             }}
           >
-            どんな内容でも大丈夫。思いついたことを自由に書いてみましょう。
+            どんな内容でも大丈夫。自由に書いてみましょう。
           </p>
 
           {/* Quick Start Button - Most Prominent */}

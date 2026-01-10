@@ -19,26 +19,26 @@ import { UsageCheckResult } from "@/lib/usage-types";
 import { UsageLimitModal } from "./UsageLimitModal";
 import { UsageIndicator } from "./UsageIndicator";
 
-// サンプル質問
+// サンプル質問（短めのテキストでモバイル表示を最適化）
 const SAMPLE_QUESTIONS = [
   {
     icon: <Brain size={16} />,
-    text: "最近どんなことで悩んでた？",
+    text: "最近の悩みは？",
     color: "#8b5cf6",
   },
   {
     icon: <Heart size={16} />,
-    text: "前向きになれた時のことを教えて",
+    text: "嬉しかった出来事",
     color: "#ec4899",
   },
   {
     icon: <Lightbulb size={16} />,
-    text: "良いアイデアを思いついた時は？",
+    text: "良いアイデア",
     color: "#f59e0b",
   },
   {
     icon: <Clock size={16} />,
-    text: "1ヶ月前の自分は何を考えてた？",
+    text: "1ヶ月前の自分",
     color: "#10b981",
   },
 ];
@@ -180,14 +180,15 @@ export function ChatInterface() {
             <p
               style={{
                 color: "var(--color-text-tertiary)",
-                fontSize: "0.95rem",
+                fontSize: "0.9rem",
                 marginBottom: "2rem",
-                maxWidth: "400px",
-                lineHeight: 1.6,
+                maxWidth: "280px",
+                lineHeight: 1.7,
+                wordBreak: "keep-all",
+                overflowWrap: "break-word",
               }}
             >
-              あなたの過去の記録をもとに、思考の整理や振り返りをお手伝いします。
-              気軽に話しかけてみてください。
+              過去の記録をもとに思考整理をお手伝いします
             </p>
 
             {/* Sample Questions */}
