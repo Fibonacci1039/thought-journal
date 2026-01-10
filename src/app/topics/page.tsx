@@ -21,8 +21,8 @@ export default async function TopicsPage() {
 
   return (
     <main className="container animate-enter">
-      <h1>トピック管理</h1>
-      <div style={{ marginTop: "2rem" }}>
+      <h1>トピック</h1>
+      <div style={{ marginTop: "1.5rem" }}>
         <TopicManager initialTopics={topics} />
       </div>
     </main>
