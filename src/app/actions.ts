@@ -296,41 +296,122 @@ export async function chatWithPastAction(query: string) {
 
     const { createClient } = await import("@supabase/supabase-js");
 
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-    const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    // Use service role key to bypass RLS
+    const supabaseKey =
+      process.env.SUPABASE_SERVICE_ROLE_KEY ||
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+    if (!supabaseUrl || !supabaseKey) {
+      console.error("Supabase credentials missing:", {
+        supabaseUrl: !!supabaseUrl,
+        supabaseKey: !!supabaseKey,
+      });
+      return { success: false, error: "Database configuration error" };
+    }
 
     const supabase = createClient(supabaseUrl, supabaseKey);
 
     // 1. Generate Query Embedding
     const queryVector = await generateEmbedding(query);
     if (!queryVector) {
-      return { success: false, error: "Failed to generate embedding" };
+      console.error("Failed to generate embedding for query:", query);
+      return {
+        success: false,
+        error: "Failed to generate embedding. Check GEMINI_API_KEY.",
+      };
     }
+
+    console.log("Query embedding generated, length:", queryVector.length);
 
     // 2. Search Similar Entries (RPC)
     const { data: similarEntries, error: searchError } = await supabase.rpc(
       "match_entries",
       {
         query_embedding: queryVector,
-        match_threshold: 0.5,
+        match_threshold: 0.3, // Lower threshold for more results
         match_count: 5,
       }
     );
 
     if (searchError) {
       console.error("Search Error:", searchError);
-      return { success: false, error: "Failed to retrieve context" };
+      // Check if RPC doesn't exist
+      if (searchError.message?.includes("function match_entries")) {
+        return {
+          success: false,
+          error:
+            "match_entries関数がSupabaseに存在しません。schema.sqlを実行してください。",
+        };
+      }
+      return {
+        success: false,
+        error: `Failed to retrieve context: ${searchError.message}`,
+      };
+    }
+
+    console.log("Similar entries found:", similarEntries?.length || 0);
+
+    // 3. Check if we have any results
+    if (!similarEntries || similarEntries.length === 0) {
+      // Check if there are any entries with embeddings
+      const { data: entriesCheck, error: checkError } = await supabase
+        .from("entries")
+        .select("id, embedding")
+        .not("embedding", "is", null)
+        .limit(1);
+
+      if (checkError) {
+        console.error("Entries check error:", checkError);
+      }
+
+      if (!entriesCheck || entriesCheck.length === 0) {
+        return {
+          success: true,
+          data: {
+            response:
+              "まだ記録がインデックスされていません。設定ページで「Index Memories Now」を実行してください。",
+            sources: [],
+          },
+          usage,
+        };
+      }
+
+      // Entries exist but no matches
+      return {
+        success: true,
+        data: {
+          response:
+            "ご質問に関連する過去の記録が見つかりませんでした。別の質問をお試しください。",
+          sources: [],
+        },
+        usage,
+      };
     }
 
     // 3. Generate Answer
     const Groq = (await import("groq-sdk")).default;
-    const apiKey = process.env.GROQ_API_KEY!;
+    const apiKey = process.env.GROQ_API_KEY;
+
+    if (!apiKey) {
+      return { success: false, error: "GROQ_API_KEY not configured" };
+    }
+
     const groq = new Groq({ apiKey });
 
-    const contextText =
-      (similarEntries as any[])
-        ?.map((e) => `[${e.date || "Past"}] ${e.human_view}`)
-        .join("\n---\n") || "No relevant past entries found.";
+    const contextText = (
+      similarEntries as {
+        id: string;
+        title?: string;
+        human_view: string;
+        similarity: number;
+      }[]
+    )
+      .map(
+        (e) =>
+          `[Similarity: ${(e.similarity * 100).toFixed(0)}%] ${e.human_view}`
+      )
+      .join("\n---\n");
 
     const systemPrompt = `
      You are the user's "Second Brain". You are answering questions based ONLY on the user's past journal entries provided below.
@@ -374,8 +455,9 @@ export async function chatWithPastAction(query: string) {
       usage,
     };
   } catch (e) {
-    console.error(e);
-    return { success: false, error: "Chat processing failed" };
+    console.error("Chat processing error:", e);
+    const errorMessage = e instanceof Error ? e.message : "Unknown error";
+    return { success: false, error: `Chat processing failed: ${errorMessage}` };
   }
 }
 
