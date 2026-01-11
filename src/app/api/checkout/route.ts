@@ -12,25 +12,43 @@ function getStripe() {
   });
 }
 
-// Pro plan price ID (set this in your Stripe dashboard)
-const PRO_PLAN_PRICE_ID =
-  process.env.STRIPE_PRO_PRICE_ID || "price_PLACEHOLDER";
-
 export async function POST(request: NextRequest) {
   try {
     // Check if Stripe is configured
-    if (!process.env.STRIPE_SECRET_KEY) {
+    const stripeKey = process.env.STRIPE_SECRET_KEY;
+    const priceId = process.env.STRIPE_PRO_PRICE_ID;
+
+    if (!stripeKey) {
+      console.error("STRIPE_SECRET_KEY is missing");
       return NextResponse.json(
-        { error: "Stripe is not configured. Please contact support." },
+        { error: "Stripe is not configured. Please set STRIPE_SECRET_KEY." },
+        { status: 503 }
+      );
+    }
+
+    if (!priceId) {
+      console.error("STRIPE_PRO_PRICE_ID is missing");
+      return NextResponse.json(
+        {
+          error: "Price ID is not configured. Please set STRIPE_PRO_PRICE_ID.",
+        },
         { status: 503 }
       );
     }
 
     const stripe = getStripe();
 
-    // Get user email from request (in a real app, get from session/auth)
-    const body = await request.json();
-    const { email, userId } = body;
+    // Get user email from request (optional)
+    let email: string | undefined;
+    let userId: string | undefined;
+
+    try {
+      const body = await request.json();
+      email = body.email;
+      userId = body.userId;
+    } catch {
+      // Body is empty, that's fine
+    }
 
     // Create Stripe Checkout Session
     const session = await stripe.checkout.sessions.create({
@@ -39,7 +57,7 @@ export async function POST(request: NextRequest) {
       customer_email: email || undefined,
       line_items: [
         {
-          price: PRO_PLAN_PRICE_ID,
+          price: priceId,
           quantity: 1,
         },
       ],
@@ -57,8 +75,10 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ url: session.url });
   } catch (error) {
     console.error("Stripe Checkout Error:", error);
+    const errorMessage =
+      error instanceof Error ? error.message : "Unknown error";
     return NextResponse.json(
-      { error: "Failed to create checkout session" },
+      { error: `Failed to create checkout session: ${errorMessage}` },
       { status: 500 }
     );
   }
