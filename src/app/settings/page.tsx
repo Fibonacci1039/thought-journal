@@ -5,12 +5,13 @@ import {
   generateEntryEmbeddingAction,
   listEntriesMissingEmbeddingAction,
 } from "@/app/actions";
-import { Loader2, Database } from "lucide-react";
+import { Loader2, Database, Crown, Check, Sparkles } from "lucide-react";
 
 export default function SettingsPage() {
   const [isSyncing, setIsSyncing] = useState(false);
   const [status, setStatus] = useState<string>("");
   const [progress, setProgress] = useState(0);
+  const [isUpgrading, setIsUpgrading] = useState(false);
 
   const handleSyncMemories = async () => {
     setIsSyncing(true);
@@ -56,12 +57,213 @@ export default function SettingsPage() {
     }
   };
 
+  const handleUpgrade = async () => {
+    setIsUpgrading(true);
+    try {
+      const res = await fetch("/api/checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+      });
+      const data = await res.json();
+      if (data.url) {
+        window.location.href = data.url;
+      } else {
+        alert(data.error || "エラーが発生しました");
+      }
+    } catch (e) {
+      console.error(e);
+      alert("決済処理に失敗しました");
+    } finally {
+      setIsUpgrading(false);
+    }
+  };
+
   return (
     <div style={{ maxWidth: "800px", margin: "0 auto", padding: "2rem" }}>
       <h1 style={{ fontSize: "1.5rem", fontWeight: 700, marginBottom: "2rem" }}>
         Settings
       </h1>
 
+      {/* Plan Section */}
+      <section
+        style={{
+          background:
+            "linear-gradient(135deg, rgba(251, 146, 60, 0.1), rgba(245, 158, 11, 0.05))",
+          padding: "1.5rem",
+          borderRadius: "16px",
+          border: "1px solid rgba(251, 146, 60, 0.3)",
+          marginBottom: "1.5rem",
+        }}
+      >
+        <h2
+          style={{
+            fontSize: "1.2rem",
+            marginBottom: "1rem",
+            display: "flex",
+            alignItems: "center",
+            gap: "0.5rem",
+            color: "#fb923c",
+          }}
+        >
+          <Crown size={20} />
+          プラン
+        </h2>
+
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "1fr 1fr",
+            gap: "1rem",
+            marginBottom: "1.5rem",
+          }}
+        >
+          {/* Free Plan */}
+          <div
+            style={{
+              padding: "1rem",
+              borderRadius: "12px",
+              background: "var(--color-bg-secondary)",
+              border: "1px solid var(--color-border)",
+            }}
+          >
+            <div style={{ fontWeight: 600, marginBottom: "0.5rem" }}>Free</div>
+            <ul
+              style={{
+                fontSize: "0.85rem",
+                color: "var(--color-text-secondary)",
+                listStyle: "none",
+                padding: 0,
+                margin: 0,
+              }}
+            >
+              <li
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "0.5rem",
+                  marginBottom: "0.25rem",
+                }}
+              >
+                <Check size={14} style={{ color: "#10b981" }} /> 記録無制限
+              </li>
+              <li
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "0.5rem",
+                  marginBottom: "0.25rem",
+                }}
+              >
+                <Check size={14} style={{ color: "#10b981" }} /> 週次レビュー
+                月2回
+              </li>
+              <li
+                style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}
+              >
+                <Check size={14} style={{ color: "#10b981" }} /> トピック分析
+                月3回
+              </li>
+            </ul>
+          </div>
+
+          {/* Pro Plan */}
+          <div
+            style={{
+              padding: "1rem",
+              borderRadius: "12px",
+              background:
+                "linear-gradient(135deg, rgba(251, 146, 60, 0.15), rgba(245, 158, 11, 0.1))",
+              border: "2px solid #fb923c",
+            }}
+          >
+            <div
+              style={{
+                fontWeight: 600,
+                marginBottom: "0.5rem",
+                display: "flex",
+                alignItems: "center",
+                gap: "0.5rem",
+              }}
+            >
+              <Sparkles size={16} style={{ color: "#fb923c" }} />
+              Pro
+              <span style={{ fontSize: "0.75rem", color: "#fb923c" }}>
+                ¥980/月
+              </span>
+            </div>
+            <ul
+              style={{
+                fontSize: "0.85rem",
+                color: "var(--color-text-secondary)",
+                listStyle: "none",
+                padding: 0,
+                margin: 0,
+              }}
+            >
+              <li
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "0.5rem",
+                  marginBottom: "0.25rem",
+                }}
+              >
+                <Check size={14} style={{ color: "#fb923c" }} /> 全機能無制限
+              </li>
+              <li
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "0.5rem",
+                  marginBottom: "0.25rem",
+                }}
+              >
+                <Check size={14} style={{ color: "#fb923c" }} /> AI自動分析
+              </li>
+              <li
+                style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}
+              >
+                <Check size={14} style={{ color: "#fb923c" }} /> 優先サポート
+              </li>
+            </ul>
+          </div>
+        </div>
+
+        <button
+          onClick={handleUpgrade}
+          disabled={isUpgrading}
+          style={{
+            width: "100%",
+            padding: "0.75rem",
+            background: "linear-gradient(135deg, #fb923c, #f59e0b)",
+            color: "#fff",
+            border: "none",
+            borderRadius: "8px",
+            fontSize: "1rem",
+            fontWeight: 600,
+            cursor: isUpgrading ? "not-allowed" : "pointer",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: "0.5rem",
+            opacity: isUpgrading ? 0.7 : 1,
+          }}
+        >
+          {isUpgrading ? (
+            <>
+              <Loader2 className="animate-spin" size={18} />
+              処理中...
+            </>
+          ) : (
+            <>
+              <Crown size={18} />
+              Proにアップグレード
+            </>
+          )}
+        </button>
+      </section>
+
+      {/* AI Memory Section */}
       <section
         style={{
           background: "var(--color-bg-secondary)",
