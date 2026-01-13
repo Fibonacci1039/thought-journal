@@ -415,10 +415,11 @@ export async function chatWithPastAction(query: string) {
 
     // Fetch user profile for personalization
     let userProfileContext = "";
+    let customRecallPrompt = "";
     try {
       const { data: profile } = await supabaseServiceRole
         .from("user_profiles")
-        .select("basic_info, current_concerns")
+        .select("basic_info, current_concerns, preferences")
         .eq("user_id", "default_user")
         .single();
 
@@ -429,10 +430,20 @@ export async function chatWithPastAction(query: string) {
         if (profile.current_concerns) {
           userProfileContext += `\nCurrent Concerns: ${profile.current_concerns}`;
         }
+        // Get custom recall prompt if set (Pro feature)
+        const prefs = profile.preferences as Record<string, string> | null;
+        if (prefs?.recallPrompt) {
+          customRecallPrompt = prefs.recallPrompt;
+        }
       }
     } catch {
       // Profile not found, continue without it
     }
+
+    // Use custom prompt if set, otherwise use default
+    const customInstructions = customRecallPrompt
+      ? `\n\nCustom Instructions from User: ${customRecallPrompt}`
+      : "";
 
     const systemPrompt = `
      You are the user's "Second Brain". You are answering questions based ONLY on the user's past journal entries provided below.
@@ -449,6 +460,7 @@ export async function chatWithPastAction(query: string) {
      - If the context doesn't contain the answer, say "I don't recall reading about that in your journal."
      - Be empathetic and thoughtful.
      - If user profile is provided, use it to give more personalized and relevant responses.
+     ${customInstructions}
      `;
 
     const completion = await groq.chat.completions.create({
@@ -578,20 +590,29 @@ export async function getUserProfileAction() {
 
 export async function saveUserProfileAction(
   basicInfo: string,
-  currentConcerns: string
+  currentConcerns: string,
+  preferences?: {
+    recallPrompt?: string;
+    topicAnalysisPrompt?: string;
+    entrySummaryPrompt?: string;
+  }
 ) {
   try {
+    const updateData: Record<string, unknown> = {
+      user_id: "default_user",
+      basic_info: basicInfo,
+      current_concerns: currentConcerns,
+      updated_at: new Date().toISOString(),
+    };
+
+    // Only add preferences if provided (Pro feature)
+    if (preferences) {
+      updateData.preferences = preferences;
+    }
+
     const { data, error } = await supabaseServiceRole
       .from("user_profiles")
-      .upsert(
-        {
-          user_id: "default_user",
-          basic_info: basicInfo,
-          current_concerns: currentConcerns,
-          updated_at: new Date().toISOString(),
-        },
-        { onConflict: "user_id" }
-      )
+      .upsert(updateData, { onConflict: "user_id" })
       .select()
       .single();
 

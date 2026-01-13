@@ -7,7 +7,15 @@ import {
   getUserProfileAction,
   saveUserProfileAction,
 } from "@/app/actions";
-import { Loader2, Database, Crown, Check, Sparkles, User } from "lucide-react";
+import {
+  Loader2,
+  Database,
+  Crown,
+  Check,
+  Sparkles,
+  User,
+  Settings,
+} from "lucide-react";
 
 export default function SettingsPage() {
   const [isSyncing, setIsSyncing] = useState(false);
@@ -18,6 +26,11 @@ export default function SettingsPage() {
   const [currentConcerns, setCurrentConcerns] = useState("");
   const [isSavingProfile, setIsSavingProfile] = useState(false);
   const [profileStatus, setProfileStatus] = useState("");
+  // Pro prompt customization
+  const [recallPrompt, setRecallPrompt] = useState("");
+  const [topicPrompt, setTopicPrompt] = useState("");
+  const [entryPrompt, setEntryPrompt] = useState("");
+  const [showProSettings, setShowProSettings] = useState(false);
 
   // Load user profile on mount
   useEffect(() => {
@@ -25,6 +38,11 @@ export default function SettingsPage() {
       if (res.success && res.data) {
         setBasicInfo(res.data.basic_info || "");
         setCurrentConcerns(res.data.current_concerns || "");
+        // Load custom prompts from preferences
+        const prefs = res.data.preferences || {};
+        setRecallPrompt(prefs.recallPrompt || "");
+        setTopicPrompt(prefs.topicAnalysisPrompt || "");
+        setEntryPrompt(prefs.entrySummaryPrompt || "");
       }
     });
   }, []);
@@ -33,7 +51,21 @@ export default function SettingsPage() {
     setIsSavingProfile(true);
     setProfileStatus("");
     try {
-      const res = await saveUserProfileAction(basicInfo, currentConcerns);
+      // Build preferences object if any prompts are set
+      const preferences =
+        recallPrompt || topicPrompt || entryPrompt
+          ? {
+              recallPrompt: recallPrompt || undefined,
+              topicAnalysisPrompt: topicPrompt || undefined,
+              entrySummaryPrompt: entryPrompt || undefined,
+            }
+          : undefined;
+
+      const res = await saveUserProfileAction(
+        basicInfo,
+        currentConcerns,
+        preferences
+      );
       if (res.success) {
         setProfileStatus("保存しました！");
         setTimeout(() => setProfileStatus(""), 3000);
@@ -502,6 +534,178 @@ export default function SettingsPage() {
             )}
           </div>
         </div>
+      </section>
+
+      {/* Pro Prompt Customization Section */}
+      <section
+        style={{
+          background:
+            "linear-gradient(135deg, rgba(139, 92, 246, 0.1), rgba(168, 85, 247, 0.05))",
+          padding: "1.5rem",
+          borderRadius: "16px",
+          border: "1px solid rgba(139, 92, 246, 0.3)",
+          marginTop: "1.5rem",
+        }}
+      >
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            cursor: "pointer",
+          }}
+          onClick={() => setShowProSettings(!showProSettings)}
+        >
+          <h2
+            style={{
+              fontSize: "1.2rem",
+              marginBottom: 0,
+              display: "flex",
+              alignItems: "center",
+              gap: "0.5rem",
+              color: "#a855f7",
+            }}
+          >
+            <Settings size={20} />
+            プロンプトカスタマイズ
+            <span
+              style={{
+                fontSize: "0.75rem",
+                background: "linear-gradient(135deg, #fb923c, #f59e0b)",
+                color: "#fff",
+                padding: "0.15rem 0.5rem",
+                borderRadius: "12px",
+                fontWeight: 600,
+              }}
+            >
+              Pro
+            </span>
+          </h2>
+          <span style={{ color: "var(--color-text-secondary)" }}>
+            {showProSettings ? "▲" : "▼"}
+          </span>
+        </div>
+
+        {showProSettings && (
+          <div
+            style={{
+              marginTop: "1rem",
+              display: "flex",
+              flexDirection: "column",
+              gap: "1rem",
+            }}
+          >
+            <p
+              style={{
+                fontSize: "0.85rem",
+                color: "var(--color-text-secondary)",
+                marginBottom: "0.5rem",
+              }}
+            >
+              AIの応答スタイルをカスタマイズできます。空欄の場合はデフォルトが使用されます。
+            </p>
+
+            <div>
+              <label
+                style={{
+                  display: "block",
+                  fontSize: "0.85rem",
+                  fontWeight: 600,
+                  marginBottom: "0.5rem",
+                  color: "#a855f7",
+                }}
+              >
+                💬 Recall 対話プロンプト
+              </label>
+              <textarea
+                value={recallPrompt}
+                onChange={(e) => setRecallPrompt(e.target.value)}
+                placeholder="例：親しい友人のように、カジュアルな口調で答えてください。必要以上にアドバイスしないでください。"
+                style={{
+                  width: "100%",
+                  minHeight: "60px",
+                  padding: "0.75rem",
+                  borderRadius: "8px",
+                  border: "1px solid var(--color-border)",
+                  background: "var(--color-bg-primary)",
+                  color: "var(--color-text)",
+                  fontSize: "0.85rem",
+                  resize: "vertical",
+                }}
+              />
+            </div>
+
+            <div>
+              <label
+                style={{
+                  display: "block",
+                  fontSize: "0.85rem",
+                  fontWeight: 600,
+                  marginBottom: "0.5rem",
+                  color: "#a855f7",
+                }}
+              >
+                📈 トピック分析プロンプト
+              </label>
+              <textarea
+                value={topicPrompt}
+                onChange={(e) => setTopicPrompt(e.target.value)}
+                placeholder="例：ビジネスコーチのように、具体的なアクションプランを提案してください。"
+                style={{
+                  width: "100%",
+                  minHeight: "60px",
+                  padding: "0.75rem",
+                  borderRadius: "8px",
+                  border: "1px solid var(--color-border)",
+                  background: "var(--color-bg-primary)",
+                  color: "var(--color-text)",
+                  fontSize: "0.85rem",
+                  resize: "vertical",
+                }}
+              />
+            </div>
+
+            <div>
+              <label
+                style={{
+                  display: "block",
+                  fontSize: "0.85rem",
+                  fontWeight: 600,
+                  marginBottom: "0.5rem",
+                  color: "#a855f7",
+                }}
+              >
+                📝 記録要約プロンプト
+              </label>
+              <textarea
+                value={entryPrompt}
+                onChange={(e) => setEntryPrompt(e.target.value)}
+                placeholder="例：簡潔な箇条書きでまとめてください。感情の言葉を素直に残してください。"
+                style={{
+                  width: "100%",
+                  minHeight: "60px",
+                  padding: "0.75rem",
+                  borderRadius: "8px",
+                  border: "1px solid var(--color-border)",
+                  background: "var(--color-bg-primary)",
+                  color: "var(--color-text)",
+                  fontSize: "0.85rem",
+                  resize: "vertical",
+                }}
+              />
+            </div>
+
+            <p
+              style={{
+                fontSize: "0.75rem",
+                color: "var(--color-text-tertiary)",
+                fontStyle: "italic",
+              }}
+            >
+              ↑ 上の「設定を保存」ボタンで一緒に保存されます
+            </p>
+          </div>
+        )}
       </section>
     </div>
   );
