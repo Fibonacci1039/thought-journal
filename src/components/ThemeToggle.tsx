@@ -1,34 +1,58 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { Sun, Moon } from "lucide-react";
+import { useState, useEffect, useCallback } from "react";
+import { Sun, Moon, Monitor } from "lucide-react";
 import { motion } from "framer-motion";
 
-type Theme = "dark" | "light";
+type ThemeMode = "system" | "dark" | "light";
+
+function getSystemTheme(): "dark" | "light" {
+  if (typeof window === "undefined") return "dark";
+  return window.matchMedia("(prefers-color-scheme: dark)").matches
+    ? "dark"
+    : "light";
+}
 
 export function ThemeToggle() {
-  const [theme, setTheme] = useState<Theme>("dark");
+  const [mode, setMode] = useState<ThemeMode>("system");
   const [mounted, setMounted] = useState(false);
+
+  const applyTheme = useCallback((newMode: ThemeMode) => {
+    const theme = newMode === "system" ? getSystemTheme() : newMode;
+    document.documentElement.setAttribute("data-theme", theme);
+  }, []);
 
   useEffect(() => {
     setMounted(true);
-    // Get saved theme or default to dark
-    const savedTheme = localStorage.getItem("theme") as Theme | null;
-    if (savedTheme) {
-      setTheme(savedTheme);
-      document.documentElement.setAttribute("data-theme", savedTheme);
+    const savedMode = localStorage.getItem("themeMode") as ThemeMode | null;
+    if (savedMode) {
+      setMode(savedMode);
+      applyTheme(savedMode);
+    } else {
+      applyTheme("system");
     }
-  }, []);
 
-  const toggleTheme = () => {
-    const newTheme = theme === "dark" ? "light" : "dark";
-    setTheme(newTheme);
-    localStorage.setItem("theme", newTheme);
-    document.documentElement.setAttribute("data-theme", newTheme);
+    // Listen for system theme changes
+    const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
+    const handleChange = () => {
+      const currentMode = localStorage.getItem("themeMode") as ThemeMode | null;
+      if (!currentMode || currentMode === "system") {
+        document.documentElement.setAttribute("data-theme", getSystemTheme());
+      }
+    };
+    mediaQuery.addEventListener("change", handleChange);
+    return () => mediaQuery.removeEventListener("change", handleChange);
+  }, [applyTheme]);
+
+  const cycleTheme = () => {
+    const next: ThemeMode =
+      mode === "system" ? "light" : mode === "light" ? "dark" : "system";
+    setMode(next);
+    localStorage.setItem("themeMode", next);
+    applyTheme(next);
   };
 
   if (!mounted) {
-    // Prevent hydration mismatch
     return (
       <button
         style={{
@@ -43,15 +67,31 @@ export function ThemeToggle() {
           cursor: "pointer",
         }}
       >
-        <Sun size={16} style={{ color: "var(--color-text-tertiary)" }} />
+        <Monitor size={16} style={{ color: "var(--color-text-tertiary)" }} />
       </button>
     );
   }
 
+  const icon =
+    mode === "system" ? (
+      <Monitor size={16} />
+    ) : mode === "light" ? (
+      <Sun size={16} />
+    ) : (
+      <Moon size={16} />
+    );
+
+  const label =
+    mode === "system"
+      ? "システム設定"
+      : mode === "light"
+      ? "ライトモード"
+      : "ダークモード";
+
   return (
     <motion.button
       whileTap={{ scale: 0.95 }}
-      onClick={toggleTheme}
+      onClick={cycleTheme}
       style={{
         display: "flex",
         alignItems: "center",
@@ -63,14 +103,11 @@ export function ThemeToggle() {
         background: "transparent",
         cursor: "pointer",
         transition: "all 0.2s ease",
+        color: "var(--color-text-tertiary)",
       }}
-      title={theme === "dark" ? "ライトモードに切替" : "ダークモードに切替"}
+      title={label}
     >
-      {theme === "dark" ? (
-        <Sun size={16} style={{ color: "var(--color-text-tertiary)" }} />
-      ) : (
-        <Moon size={16} style={{ color: "var(--color-text-tertiary)" }} />
-      )}
+      {icon}
     </motion.button>
   );
 }

@@ -157,26 +157,24 @@ export function JournalingStarter({ topics }: Props) {
               alignItems: "center",
               gap: "0.75rem",
               padding: "1rem 2.5rem",
-              background:
-                "linear-gradient(135deg, var(--color-accent), #f59e0b)",
+              background: "var(--color-accent)",
               color: "#fff",
               border: "none",
               borderRadius: "50px",
               cursor: "pointer",
               fontSize: "1.1rem",
               fontWeight: 600,
-              boxShadow: "0 4px 20px rgba(251, 146, 60, 0.3)",
+              boxShadow: "0 4px 16px rgba(0, 0, 0, 0.15)",
               transition: "all 0.3s ease",
             }}
             onMouseEnter={(e) => {
               e.currentTarget.style.transform = "translateY(-2px)";
-              e.currentTarget.style.boxShadow =
-                "0 6px 25px rgba(251, 146, 60, 0.4)";
+              e.currentTarget.style.boxShadow = "0 6px 20px rgba(0, 0, 0, 0.2)";
             }}
             onMouseLeave={(e) => {
               e.currentTarget.style.transform = "none";
               e.currentTarget.style.boxShadow =
-                "0 4px 20px rgba(251, 146, 60, 0.3)";
+                "0 4px 16px rgba(0, 0, 0, 0.15)";
             }}
           >
             <Edit3 size={20} />
