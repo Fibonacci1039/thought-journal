@@ -95,7 +95,12 @@ export function ChatInterface() {
       } else {
         setMessages((prev) => [
           ...prev,
-          { role: "bot", text: "すみません、うまく思い出せませんでした。" },
+          {
+            role: "bot",
+            text:
+              result.error ||
+              "すみません、うまく思い出せませんでした。（エラー詳細はコンソールを確認してください）",
+          },
         ]);
       }
     } catch (e) {

@@ -34,6 +34,16 @@ export async function getMonthlyUsage(feature: FeatureType): Promise<number> {
 export async function checkUsageLimit(
   feature: FeatureType
 ): Promise<UsageCheckResult> {
+  // Developer Mode Bypass
+  if (process.env.NEXT_PUBLIC_IS_DEV_MODE === "true") {
+    return {
+      allowed: true,
+      used: 0,
+      limit: 9999,
+      remaining: 9999,
+    };
+  }
+
   const used = await getMonthlyUsage(feature);
   const limit = USAGE_LIMITS[feature];
   const remaining = Math.max(0, limit - used);

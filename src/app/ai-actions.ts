@@ -47,6 +47,22 @@ export async function generatePromptAction(topicId: string, topicName: string) {
       return { success: false, error: "データが足りません" };
     }
 
+    // A'. Fetch User Preferences for Custom Prompt
+    let customInstructions = "";
+    try {
+      const { data: profile } = await supabase
+        .from("user_profiles")
+        .select("preferences")
+        .eq("user_id", "default_user")
+        .single();
+      const prefs = profile?.preferences as Record<string, string> | null;
+      if (prefs?.topicAnalysisPrompt) {
+        customInstructions = `\n\nCustom Instructions from User: ${prefs.topicAnalysisPrompt}`;
+      }
+    } catch {
+      // Ignore error
+    }
+
     // B. Construct Prompt
     const logText = topicEntries
       .map((e) => {
@@ -75,6 +91,7 @@ ${logText}
 2. **自然な対話調で**: 分析結果は、親しい知的な友人が語りかけるような、自然な日本語（です・ます調）で出力してください。「OSのアップデート」のような機械的な比喩は避け、血の通った言葉を選んでください。
 3. **転換点を見つける**: 今が「安定している」のか「変化の渦中」なのか「停滞している」のかを判断してください。
 4. **深い問い**: ユーザーが見逃している視点や、避けている核心に迫る問いを投げかけてください。
+${customInstructions}
 
 # 出力形式 (JSON)
 以下のJSON形式のみを出力してください。Markdownのコードブロックは不要です。
@@ -337,6 +354,22 @@ export async function autoAnalyzeTopicAction(
       return { success: false, error: "データが足りません" };
     }
 
+    // A'. Fetch User Preferences for Custom Prompt
+    let customInstructions = "";
+    try {
+      const { data: profile } = await supabase
+        .from("user_profiles")
+        .select("preferences")
+        .eq("user_id", "default_user")
+        .single();
+      const prefs = profile?.preferences as Record<string, string> | null;
+      if (prefs?.topicAnalysisPrompt) {
+        customInstructions = `\n\nCustom Instructions from User: ${prefs.topicAnalysisPrompt}`;
+      }
+    } catch {
+      // Ignore error
+    }
+
     // 3. Construct Prompt
     const logText = topicEntries
       .map((e) => {
@@ -363,6 +396,7 @@ ${logText}
 2. 自然な対話調で: 親しい知的な友人のような、自然な日本語（です・ます調）で。
 3. 転換点を見つける: 今が「安定」「変化の渦中」「停滞」のどれかを判断。
 4. 深い問い: 見逃している視点や核心に迫る問いを。
+${customInstructions}
 
 # 出力形式 (JSON)
 以下のJSON形式のみを出力。Markdownコードブロック不要。

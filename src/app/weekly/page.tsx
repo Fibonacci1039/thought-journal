@@ -1,6 +1,7 @@
 import { WeeklyAnalysisSection } from "@/components/WeeklyAnalysisSection";
 import Link from "next/link";
 import { getEntries } from "@/lib/storage";
+import { supabase } from "@/lib/supabase";
 
 export const dynamic = "force-dynamic";
 
@@ -12,6 +13,24 @@ export default async function WeeklyPage() {
     (e) => new Date(e.created_at) >= oneWeekAgo
   ).length;
 
+  // Fetch existing weekly summary if any
+  const { data: latestSummary } = await supabase
+    .from("periodic_summaries")
+    .select("*")
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .single();
+
+  let initialData = null;
+  if (latestSummary) {
+    const created = new Date(latestSummary.created_at);
+    // Check if within last 7 days? Or just show the latest one regardless?
+    // User requested "show if done". Let's show if it's recent (within 7 days).
+    if (created >= oneWeekAgo) {
+      initialData = latestSummary;
+    }
+  }
+
   return (
     <main className="container animate-enter">
       <h1 style={{ marginBottom: "1rem" }}>週次レビュー</h1>
@@ -20,8 +39,8 @@ export default async function WeeklyPage() {
         {now.toLocaleDateString()}) のログ数: {weeklyCount}件
       </p>
 
-      {weeklyCount > 0 ? (
-        <WeeklyAnalysisSection />
+      {weeklyCount > 0 || initialData ? (
+        <WeeklyAnalysisSection initialData={initialData} />
       ) : (
         <div
           style={{

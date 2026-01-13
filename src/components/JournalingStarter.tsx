@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { getUserProfileAction } from "@/app/actions";
 import { JOURNALING_PRESETS, JournalingPreset } from "@/lib/prompts";
 import { EntryForm } from "./EntryForm";
 import { Topic } from "@/lib/types";
@@ -69,10 +70,29 @@ export function JournalingStarter({ topics }: Props) {
   );
   const [mode, setMode] = useState<Mode>("SELECT");
   const [copied, setCopied] = useState(false);
+  const [customEntryPrompt, setCustomEntryPrompt] = useState("");
+
+  // Load user preferences for custom entry prompt
+  useEffect(() => {
+    getUserProfileAction().then((res) => {
+      if (res.success && res.data?.preferences) {
+        const prefs = res.data.preferences as Record<string, string>;
+        if (prefs.entrySummaryPrompt) {
+          setCustomEntryPrompt(prefs.entrySummaryPrompt);
+        }
+      }
+    });
+  }, []);
+
+  const getFullSystemPrompt = (preset: JournalingPreset) => {
+    if (!customEntryPrompt) return preset.systemPrompt;
+    return `${preset.systemPrompt}\n\n【追加の出力指示】\n${customEntryPrompt}`;
+  };
 
   const handleCopyPrompt = async () => {
     if (!selectedPreset) return;
-    await navigator.clipboard.writeText(selectedPreset.systemPrompt);
+    const fullPrompt = getFullSystemPrompt(selectedPreset);
+    await navigator.clipboard.writeText(fullPrompt);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
@@ -439,7 +459,7 @@ export function JournalingStarter({ topics }: Props) {
           </div>
           <textarea
             readOnly
-            value={selectedPreset.systemPrompt}
+            value={getFullSystemPrompt(selectedPreset)}
             style={{
               width: "100%",
               height: "150px",
@@ -590,7 +610,13 @@ export function JournalingStarter({ topics }: Props) {
       </div>
 
       {/* Entry Form */}
-      <EntryForm topics={topics} presetPrompt={selectedPreset?.systemPrompt} />
+      {/* Entry Form */}
+      <EntryForm
+        topics={topics}
+        presetPrompt={
+          selectedPreset ? getFullSystemPrompt(selectedPreset) : undefined
+        }
+      />
     </div>
   );
 }

@@ -12,13 +12,22 @@ import { UsageCheckResult } from "@/lib/usage-types";
 import { UsageLimitModal } from "./UsageLimitModal";
 import { UsageIndicator } from "./UsageIndicator";
 
-export function WeeklyAnalysisSection() {
+type Props = {
+  initialData?: any;
+};
+
+export function WeeklyAnalysisSection({ initialData }: Props) {
   const router = useRouter();
   const [prompt, setPrompt] = useState("");
   const [aiInput, setAiInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [autoLoading, setAutoLoading] = useState(false);
-  const [mode, setMode] = useState<"IDLE" | "PROMPT_SHOWN" | "DONE">("IDLE");
+  const [mode, setMode] = useState<"IDLE" | "PROMPT_SHOWN" | "DONE" | "VIEW">(
+    initialData ? "VIEW" : "IDLE"
+  );
+  const [result, setResult] = useState<any>(
+    initialData?.ai_knowledge || initialData || null
+  );
   const [usage, setUsage] = useState<UsageCheckResult | null>(null);
   const [showLimitModal, setShowLimitModal] = useState(false);
 
@@ -31,7 +40,13 @@ export function WeeklyAnalysisSection() {
     setAutoLoading(true);
     try {
       const res = await autoWeeklyAnalysisAction();
-      if (res.success && res.topicId) {
+      if (res.success && res.topicId && res.data) {
+        setResult(res.data);
+        setMode("VIEW");
+        // No longer redirecting, staying on page to show result
+        // router.push(`/topics/${res.topicId}`);
+      } else if (res.success && res.topicId) {
+        // Fallback if data not returned (should not happen with latest action update)
         router.push(`/topics/${res.topicId}`);
       } else if (res.error === "USAGE_LIMIT_EXCEEDED") {
         if (res.usage) setUsage(res.usage);
@@ -445,6 +460,119 @@ export function WeeklyAnalysisSection() {
           </div>
         )}
       </div>
+
+      {/* Result View */}
+      {mode === "VIEW" && result && (
+        <div
+          className="animate-enter"
+          style={{
+            marginTop: "2rem",
+            padding: "2rem",
+            borderRadius: "16px",
+            background: "linear-gradient(135deg, #1c1c1e 0%, #2c2c2e 100%)",
+            border: "1px solid var(--color-border)",
+            boxShadow: "0 8px 32px rgba(0, 0, 0, 0.3)",
+          }}
+        >
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              marginBottom: "2rem",
+              borderBottom: "1px solid rgba(255,255,255,0.1)",
+              paddingBottom: "1rem",
+            }}
+          >
+            <h2 style={{ fontSize: "1.5rem", fontWeight: 700, color: "#fff" }}>
+              Weekly Insight
+            </h2>
+            <div
+              style={{
+                fontSize: "0.85rem",
+                color: "rgba(255,255,255,0.6)",
+              }}
+            >
+              AI Analysis Result
+            </div>
+          </div>
+
+          <div style={{ display: "grid", gap: "2rem" }}>
+            {/* Status / Theme */}
+            <div
+              style={{
+                padding: "1.5rem",
+                background: "rgba(255,255,255,0.05)",
+                borderRadius: "12px",
+              }}
+            >
+              <h3
+                style={{
+                  fontSize: "0.9rem",
+                  color: "var(--color-accent)",
+                  marginBottom: "0.5rem",
+                  textTransform: "uppercase",
+                  letterSpacing: "1px",
+                }}
+              >
+                Current Theme
+              </h3>
+              <p style={{ fontSize: "1.2rem", fontWeight: 600, color: "#fff" }}>
+                {result.current_status || result.theme || "No Theme"}
+              </p>
+            </div>
+
+            {/* Main Content Render */}
+            <div style={{ lineHeight: 1.8, color: "rgba(255,255,255,0.9)" }}>
+              {result.reason && (
+                <div style={{ marginBottom: "1.5rem" }}>
+                  <h4
+                    style={{
+                      fontSize: "1rem",
+                      fontWeight: 600,
+                      marginBottom: "0.5rem",
+                      color: "#fff",
+                    }}
+                  >
+                    Analysis
+                  </h4>
+                  <p>{result.reason}</p>
+                </div>
+              )}
+
+              {/* Fallback for other fields */}
+              {!result.reason && !result.current_status && (
+                <pre
+                  style={{
+                    whiteSpace: "pre-wrap",
+                    fontSize: "0.85rem",
+                    color: "var(--color-subtle)",
+                  }}
+                >
+                  {JSON.stringify(result, null, 2)}
+                </pre>
+              )}
+            </div>
+          </div>
+
+          <div style={{ marginTop: "2rem", textAlign: "center" }}>
+            <button
+              onClick={() => setMode("IDLE")}
+              style={{
+                background: "transparent",
+                border: "1px solid var(--color-border)",
+                color: "var(--color-subtle)",
+                padding: "0.5rem 1rem",
+                borderRadius: "20px",
+                cursor: "pointer",
+                fontSize: "0.85rem",
+              }}
+            >
+              閉じる / 再分析
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Usage Limit Modal */}
       {usage && (
