@@ -413,155 +413,170 @@ export function EntryList({
                     );
                   }
 
-                  // Full display for journals
+                  // Full display for journals, quotes, ideas
                   return (
                     <div
                       key={entry.id}
-                      className="entry-row"
                       onClick={() => router.push(`/entry/${entry.id}`)}
+                      style={{
+                        display: "flex",
+                        alignItems: "flex-start",
+                        gap: "1rem",
+                        padding: "1.25rem",
+                        backgroundColor: "var(--color-bg-primary)",
+                        borderRadius: "12px",
+                        border: "1px solid var(--color-border)",
+                        cursor: "pointer",
+                        transition: "all 0.2s ease",
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.transform = "translateY(-2px)";
+                        e.currentTarget.style.boxShadow = "var(--shadow-card)";
+                        e.currentTarget.style.borderColor =
+                          "var(--color-border-hover)";
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.transform = "translateY(0)";
+                        e.currentTarget.style.boxShadow = "none";
+                        e.currentTarget.style.borderColor =
+                          "var(--color-border)";
+                      }}
                     >
+                      {/* Type Icon */}
                       <div
                         style={{
+                          width: "36px",
+                          height: "36px",
+                          borderRadius: "8px",
+                          backgroundColor: "var(--color-accent-subtle)",
                           display: "flex",
-                          gap: "1rem",
-                          alignItems: "baseline",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          color: config.color,
+                          flexShrink: 0,
                         }}
                       >
-                        <span
+                        {entryType === "quote"
+                          ? SOURCE_TYPE_ICONS[
+                              (entry.ai_view as Record<string, unknown>)
+                                ?.source_type as string
+                            ] || config.icon
+                          : config.icon}
+                      </div>
+
+                      {/* Content */}
+                      <div style={{ flexGrow: 1, minWidth: 0 }}>
+                        {/* Header: Type + Tags */}
+                        <div
                           style={{
-                            fontSize: "0.85rem",
-                            color: "var(--color-text-tertiary)",
-                            fontFamily: "var(--font-mono)",
-                            minWidth: "45px",
                             display: "flex",
                             alignItems: "center",
-                            gap: "4px",
+                            gap: "0.5rem",
+                            marginBottom: "0.5rem",
+                            flexWrap: "wrap",
                           }}
                         >
-                          <Clock size={10} /> {timeStr}
-                        </span>
-
-                        <div style={{ flexGrow: 1 }}>
-                          <div
+                          <span
                             style={{
-                              display: "flex",
-                              alignItems: "center",
-                              gap: "0.5rem",
-                              marginBottom: "0.2rem",
+                              fontSize: "0.75rem",
+                              fontWeight: 600,
+                              color: config.color,
                             }}
                           >
-                            <span style={{ color: config.color }}>
-                              {entryType === "quote"
-                                ? SOURCE_TYPE_ICONS[
-                                    (entry.ai_view as Record<string, unknown>)
-                                      ?.source_type as string
-                                  ] || config.icon
-                                : config.icon}
-                            </span>
-                            <h4
-                              style={{
-                                fontSize: "1rem",
-                                fontWeight: 500,
-                                color: "var(--color-text-primary)",
-                                lineHeight: 1.5,
-                                margin: 0,
-                              }}
-                            >
-                              {typeof mainText === "string"
-                                ? mainText
-                                : entry.title || ""}
-                            </h4>
-                          </div>
-
-                          {/* Topic badges */}
-                          <div
-                            style={{
-                              display: "flex",
-                              gap: "0.5rem",
-                              alignItems: "center",
-                              marginTop: "0.4rem",
-                            }}
-                          >
-                            {entry.topic_ids &&
-                              entry.topic_ids.length > 0 &&
-                              entry.topic_ids.map((tid) => {
-                                const topic = topics.find((t) => t.id === tid);
-                                return (
-                                  <Link
-                                    key={tid}
-                                    href={`/topics/${tid}`}
-                                    onClick={(e) => e.stopPropagation()}
-                                    style={{
-                                      fontSize: "0.75rem",
-                                      color: "#10b981",
-                                      background:
-                                        "linear-gradient(135deg, rgba(16, 185, 129, 0.15), rgba(52, 211, 153, 0.1))",
-                                      border:
-                                        "1px solid rgba(16, 185, 129, 0.3)",
-                                      padding: "3px 10px",
-                                      borderRadius: "14px",
-                                      display: "inline-flex",
-                                      alignItems: "center",
-                                      gap: "4px",
-                                      textDecoration: "none",
-                                      fontWeight: 500,
-                                      transition: "all 0.2s",
-                                    }}
-                                    onMouseEnter={(e) => {
-                                      e.currentTarget.style.background =
-                                        "rgba(16, 185, 129, 0.25)";
-                                      e.currentTarget.style.transform =
-                                        "translateY(-1px)";
-                                    }}
-                                    onMouseLeave={(e) => {
-                                      e.currentTarget.style.background =
-                                        "linear-gradient(135deg, rgba(16, 185, 129, 0.15), rgba(52, 211, 153, 0.1))";
-                                      e.currentTarget.style.transform = "none";
-                                    }}
-                                  >
-                                    <Hash size={10} />{" "}
-                                    {topic ? topic.name : "Unknown"}
-                                  </Link>
-                                );
-                              })}
-                            {/* Tags */}
-                            {entry.tags &&
-                              entry.tags.map((tag) => (
-                                <button
-                                  key={tag}
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setTagFilter(tag);
-                                  }}
+                            {config.label}
+                          </span>
+                          {/* Topic badges inline */}
+                          {entry.topic_ids &&
+                            entry.topic_ids.length > 0 &&
+                            entry.topic_ids.slice(0, 2).map((tid) => {
+                              const topic = topics.find((t) => t.id === tid);
+                              return (
+                                <Link
+                                  key={tid}
+                                  href={`/topics/${tid}`}
+                                  onClick={(e) => e.stopPropagation()}
                                   style={{
-                                    fontSize: "0.75rem",
-                                    color: "#a78bfa",
-                                    background: "rgba(167, 139, 250, 0.15)",
+                                    fontSize: "0.7rem",
+                                    color: "#10b981",
+                                    background: "rgba(16, 185, 129, 0.1)",
                                     padding: "2px 8px",
-                                    borderRadius: "12px",
-                                    border: "none",
-                                    cursor: "pointer",
+                                    borderRadius: "10px",
+                                    textDecoration: "none",
+                                    fontWeight: 500,
                                   }}
                                 >
-                                  #{tag}
-                                </button>
-                              ))}
-                            {entry.source_url && (
-                              <span
-                                style={{
-                                  fontSize: "0.75rem",
-                                  color: "var(--color-text-tertiary)",
-                                  display: "flex",
-                                  alignItems: "center",
-                                  gap: "3px",
-                                }}
-                              >
-                                <LinkIcon size={10} /> Link
-                              </span>
-                            )}
-                          </div>
+                                  {topic ? topic.name : "Unknown"}
+                                </Link>
+                              );
+                            })}
+                        </div>
+
+                        {/* Main Text */}
+                        <p
+                          style={{
+                            fontSize: "0.95rem",
+                            color: "var(--color-text-primary)",
+                            lineHeight: 1.6,
+                            margin: 0,
+                            display: "-webkit-box",
+                            WebkitLineClamp: 3,
+                            WebkitBoxOrient: "vertical",
+                            overflow: "hidden",
+                          }}
+                        >
+                          {typeof mainText === "string"
+                            ? mainText
+                            : entry.title || ""}
+                        </p>
+
+                        {/* Time */}
+                        <div
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "0.5rem",
+                            marginTop: "0.75rem",
+                          }}
+                        >
+                          <span
+                            style={{
+                              fontSize: "0.75rem",
+                              color: "var(--color-text-tertiary)",
+                              display: "flex",
+                              alignItems: "center",
+                              gap: "4px",
+                            }}
+                          >
+                            <Clock size={10} />
+                            {timeStr}
+                          </span>
+                          {entry.source_url && (
+                            <span
+                              style={{
+                                fontSize: "0.75rem",
+                                color: "var(--color-text-tertiary)",
+                                display: "flex",
+                                alignItems: "center",
+                                gap: "3px",
+                              }}
+                            >
+                              <LinkIcon size={10} /> Link
+                            </span>
+                          )}
                         </div>
                       </div>
+
+                      {/* Right indicator dot */}
+                      <div
+                        style={{
+                          width: "6px",
+                          height: "6px",
+                          borderRadius: "50%",
+                          backgroundColor: config.color,
+                          flexShrink: 0,
+                          marginTop: "0.5rem",
+                        }}
+                      />
                     </div>
                   );
                 })}

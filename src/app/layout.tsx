@@ -1,21 +1,21 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Inter, Playfair_Display } from "next/font/google";
 import "./globals.css";
 import { Sidebar } from "@/components/Sidebar";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+const inter = Inter({
+  variable: "--font-inter",
   subsets: ["latin"],
 });
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
+const playfair = Playfair_Display({
+  variable: "--font-playfair",
   subsets: ["latin"],
 });
 
 export const metadata: Metadata = {
   title: "Thought Journal",
-  description: "Capture your thoughts.",
+  description: "思考を整理し、自分と向き合うジャーナルアプリ",
   manifest: "/manifest.json",
 };
 
@@ -23,8 +23,8 @@ export const viewport = {
   width: "device-width",
   initialScale: 1,
   maximumScale: 1,
-  userScalable: false, // App-like feel
-  themeColor: "#fbfbfd",
+  userScalable: false,
+  themeColor: "#2c2c2e",
 };
 
 export default function RootLayout({
@@ -33,8 +33,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
-      <body className={`${geistSans.variable} ${geistMono.variable}`}>
+    <html lang="ja">
+      <body className={`${inter.variable} ${playfair.variable}`}>
         <div className="app-layout">
           <Sidebar />
           <div className="main-content">{children}</div>

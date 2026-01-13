@@ -11,6 +11,7 @@ import {
   Settings,
   Quote,
 } from "lucide-react";
+import { ThemeToggle } from "./ThemeToggle";
 
 const NAV_ITEMS = [
   { label: "タイムライン", href: "/", icon: <BookOpen size={18} /> },
@@ -29,7 +30,29 @@ export function Sidebar() {
     <aside className="sidebar">
       {/* App Title / Brand */}
       <div className="sidebar-header">
-        <h1 className="sidebar-title">Journal</h1>
+        <h1
+          className="sidebar-title"
+          style={{
+            fontFamily: "var(--font-display)",
+            fontSize: "1.25rem",
+            fontWeight: 700,
+            display: "flex",
+            alignItems: "center",
+            gap: "0.5rem",
+          }}
+        >
+          <span style={{ fontSize: "1.5rem" }}>📓</span>
+          Thought Journal
+        </h1>
+        <p
+          style={{
+            fontSize: "0.75rem",
+            color: "var(--color-text-tertiary)",
+            marginTop: "0.25rem",
+          }}
+        >
+          思考を整理する
+        </p>
       </div>
 
       {/* Navigation List */}
@@ -51,9 +74,26 @@ export function Sidebar() {
         })}
       </nav>
 
-      {/* Bottom Actions (Settings, etc. - Placeholder) */}
-      <div className="sidebar-footer">
-        {/* Potentially user profile or settings here */}
+      {/* Footer with Theme Toggle */}
+      <div
+        style={{
+          marginTop: "auto",
+          paddingTop: "1rem",
+          borderTop: "1px solid var(--color-border)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+        }}
+      >
+        <span
+          style={{
+            fontSize: "0.75rem",
+            color: "var(--color-text-tertiary)",
+          }}
+        >
+          テーマ
+        </span>
+        <ThemeToggle />
       </div>
     </aside>
   );
