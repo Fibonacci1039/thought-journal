@@ -466,103 +466,128 @@ export function WeeklyAnalysisSection({ initialData }: Props) {
         <div
           className="animate-enter"
           style={{
-            marginTop: "2rem",
-            padding: "2rem",
-            borderRadius: "16px",
-            background: "linear-gradient(135deg, #1c1c1e 0%, #2c2c2e 100%)",
+            marginTop: "1.5rem",
+            padding: "1.5rem",
+            borderRadius: "12px",
+            background: "var(--color-bg-tertiary)",
             border: "1px solid var(--color-border)",
-            boxShadow: "0 8px 32px rgba(0, 0, 0, 0.3)",
           }}
         >
+          {/* Header */}
           <div
             style={{
               display: "flex",
               justifyContent: "space-between",
               alignItems: "center",
-              marginBottom: "2rem",
-              borderBottom: "1px solid rgba(255,255,255,0.1)",
-              paddingBottom: "1rem",
+              marginBottom: "1.5rem",
             }}
           >
-            <h2 style={{ fontSize: "1.5rem", fontWeight: 700, color: "#fff" }}>
-              Weekly Insight
-            </h2>
-            <div
+            <h3
               style={{
-                fontSize: "0.85rem",
-                color: "rgba(255,255,255,0.6)",
+                fontSize: "1.1rem",
+                fontWeight: 600,
+                display: "flex",
+                alignItems: "center",
+                gap: "0.5rem",
               }}
             >
-              AI Analysis Result
+              <span>📊</span> 週次インサイト
+            </h3>
+            <span
+              style={{
+                fontSize: "0.8rem",
+                color: "var(--color-subtle)",
+              }}
+            >
+              {result.period_label || "今週"}
+            </span>
+          </div>
+
+          {/* Theme Card */}
+          <div
+            style={{
+              padding: "1rem 1.25rem",
+              background: "rgba(255, 159, 10, 0.1)",
+              borderRadius: "10px",
+              borderLeft: "3px solid var(--color-accent)",
+              marginBottom: "1rem",
+            }}
+          >
+            <div
+              style={{
+                fontSize: "0.75rem",
+                color: "var(--color-accent)",
+                marginBottom: "0.25rem",
+                fontWeight: 600,
+              }}
+            >
+              🎯 今週のテーマ
+            </div>
+            <div style={{ fontSize: "1rem", fontWeight: 600 }}>
+              {result.theme || result.current_status || "テーマなし"}
             </div>
           </div>
 
-          <div style={{ display: "grid", gap: "2rem" }}>
-            {/* Status / Theme */}
-            <div
-              style={{
-                padding: "1.5rem",
-                background: "rgba(255,255,255,0.05)",
-                borderRadius: "12px",
-              }}
-            >
-              <h3
+          {/* Insight */}
+          {(result.insight_text || result.reason) && (
+            <div style={{ marginBottom: "1rem" }}>
+              <div
                 style={{
-                  fontSize: "0.9rem",
-                  color: "var(--color-accent)",
+                  fontSize: "0.8rem",
+                  color: "var(--color-subtle)",
                   marginBottom: "0.5rem",
-                  textTransform: "uppercase",
-                  letterSpacing: "1px",
+                  fontWeight: 600,
                 }}
               >
-                Current Theme
-              </h3>
-              <p style={{ fontSize: "1.2rem", fontWeight: 600, color: "#fff" }}>
-                {result.current_status || result.theme || "No Theme"}
+                💡 インサイト
+              </div>
+              <p
+                style={{
+                  fontSize: "0.95rem",
+                  lineHeight: 1.7,
+                  color: "var(--color-text-secondary)",
+                }}
+              >
+                {result.insight_text || result.reason}
               </p>
             </div>
+          )}
 
-            {/* Main Content Render */}
-            <div style={{ lineHeight: 1.8, color: "rgba(255,255,255,0.9)" }}>
-              {result.reason && (
-                <div style={{ marginBottom: "1.5rem" }}>
-                  <h4
-                    style={{
-                      fontSize: "1rem",
-                      fontWeight: 600,
-                      marginBottom: "0.5rem",
-                      color: "#fff",
-                    }}
-                  >
-                    Analysis
-                  </h4>
-                  <p>{result.reason}</p>
-                </div>
-              )}
-
-              {/* Fallback for other fields */}
-              {!result.reason && !result.current_status && (
-                <pre
-                  style={{
-                    whiteSpace: "pre-wrap",
-                    fontSize: "0.85rem",
-                    color: "var(--color-subtle)",
-                  }}
-                >
-                  {JSON.stringify(result, null, 2)}
-                </pre>
-              )}
+          {/* Action Item */}
+          {result.action_item && (
+            <div
+              style={{
+                padding: "1rem",
+                background: "rgba(16, 185, 129, 0.08)",
+                borderRadius: "10px",
+                borderLeft: "3px solid #10b981",
+              }}
+            >
+              <div
+                style={{
+                  fontSize: "0.75rem",
+                  color: "#10b981",
+                  marginBottom: "0.25rem",
+                  fontWeight: 600,
+                }}
+              >
+                🚀 来週のアクション
+              </div>
+              <p style={{ fontSize: "0.95rem", lineHeight: 1.6 }}>
+                {result.action_item}
+              </p>
             </div>
-          </div>
+          )}
 
-          <div style={{ marginTop: "2rem", textAlign: "center" }}>
+          {/* Close/Re-analyze Button */}
+          <div style={{ marginTop: "1.5rem", textAlign: "center" }}>
             <button
               onClick={() => setMode("IDLE")}
               style={{
                 background: "transparent",
                 border: "1px solid var(--color-border)",
                 color: "var(--color-subtle)",
-                padding: "0.5rem 1rem",
+                padding: "0.5rem 1.25rem",
                 borderRadius: "20px",
                 cursor: "pointer",
                 fontSize: "0.85rem",
