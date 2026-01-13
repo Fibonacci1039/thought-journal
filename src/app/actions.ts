@@ -413,8 +413,30 @@ export async function chatWithPastAction(query: string) {
       )
       .join("\n---\n");
 
+    // Fetch user profile for personalization
+    let userProfileContext = "";
+    try {
+      const { data: profile } = await supabaseServiceRole
+        .from("user_profiles")
+        .select("basic_info, current_concerns")
+        .eq("user_id", "default_user")
+        .single();
+
+      if (profile) {
+        if (profile.basic_info) {
+          userProfileContext += `\nUser Profile: ${profile.basic_info}`;
+        }
+        if (profile.current_concerns) {
+          userProfileContext += `\nCurrent Concerns: ${profile.current_concerns}`;
+        }
+      }
+    } catch {
+      // Profile not found, continue without it
+    }
+
     const systemPrompt = `
      You are the user's "Second Brain". You are answering questions based ONLY on the user's past journal entries provided below.
+     ${userProfileContext}
      
      User Query: ${query}
      
@@ -426,6 +448,7 @@ export async function chatWithPastAction(query: string) {
      - Cite specific past thoughts if relevant (e.g., "Earlier you mentioned...", "On [Date] you felt...").
      - If the context doesn't contain the answer, say "I don't recall reading about that in your journal."
      - Be empathetic and thoughtful.
+     - If user profile is provided, use it to give more personalized and relevant responses.
      `;
 
     const completion = await groq.chat.completions.create({
@@ -519,7 +542,65 @@ export async function findRelatedEntriesAction(text: string) {
 
     const related = await findRelatedEntries(embedding);
     return { success: true, data: related };
-  } catch (e: any) {
+  } catch (e: unknown) {
     return handleDbError(e);
+  }
+}
+
+// -- User Profile (Personal AI Settings) --
+
+import { createClient } from "@supabase/supabase-js";
+
+const supabaseServiceRole = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+);
+
+export async function getUserProfileAction() {
+  try {
+    const { data, error } = await supabaseServiceRole
+      .from("user_profiles")
+      .select("*")
+      .eq("user_id", "default_user")
+      .single();
+
+    if (error && error.code !== "PGRST116") {
+      // PGRST116 = no rows returned
+      throw error;
+    }
+
+    return { success: true, data: data || null };
+  } catch (e: unknown) {
+    console.error("Get User Profile Error:", e);
+    return { success: false, error: (e as Error).message };
+  }
+}
+
+export async function saveUserProfileAction(
+  basicInfo: string,
+  currentConcerns: string
+) {
+  try {
+    const { data, error } = await supabaseServiceRole
+      .from("user_profiles")
+      .upsert(
+        {
+          user_id: "default_user",
+          basic_info: basicInfo,
+          current_concerns: currentConcerns,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: "user_id" }
+      )
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    revalidatePath("/settings");
+    return { success: true, data };
+  } catch (e: unknown) {
+    console.error("Save User Profile Error:", e);
+    return { success: false, error: (e as Error).message };
   }
 }

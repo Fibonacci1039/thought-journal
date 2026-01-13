@@ -1,17 +1,51 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   generateEntryEmbeddingAction,
   listEntriesMissingEmbeddingAction,
+  getUserProfileAction,
+  saveUserProfileAction,
 } from "@/app/actions";
-import { Loader2, Database, Crown, Check, Sparkles } from "lucide-react";
+import { Loader2, Database, Crown, Check, Sparkles, User } from "lucide-react";
 
 export default function SettingsPage() {
   const [isSyncing, setIsSyncing] = useState(false);
   const [status, setStatus] = useState<string>("");
   const [progress, setProgress] = useState(0);
   const [isUpgrading, setIsUpgrading] = useState(false);
+  const [basicInfo, setBasicInfo] = useState("");
+  const [currentConcerns, setCurrentConcerns] = useState("");
+  const [isSavingProfile, setIsSavingProfile] = useState(false);
+  const [profileStatus, setProfileStatus] = useState("");
+
+  // Load user profile on mount
+  useEffect(() => {
+    getUserProfileAction().then((res) => {
+      if (res.success && res.data) {
+        setBasicInfo(res.data.basic_info || "");
+        setCurrentConcerns(res.data.current_concerns || "");
+      }
+    });
+  }, []);
+
+  const handleSaveProfile = async () => {
+    setIsSavingProfile(true);
+    setProfileStatus("");
+    try {
+      const res = await saveUserProfileAction(basicInfo, currentConcerns);
+      if (res.success) {
+        setProfileStatus("保存しました！");
+        setTimeout(() => setProfileStatus(""), 3000);
+      } else {
+        setProfileStatus("エラー: " + res.error);
+      }
+    } catch {
+      setProfileStatus("保存に失敗しました");
+    } finally {
+      setIsSavingProfile(false);
+    }
+  };
 
   const handleSyncMemories = async () => {
     setIsSyncing(true);
@@ -112,7 +146,7 @@ export default function SettingsPage() {
         <div
           style={{
             display: "grid",
-            gridTemplateColumns: "1fr 1fr",
+            gridTemplateColumns: "repeat(auto-fit, minmax(250px, 1fr))",
             gap: "1rem",
             marginBottom: "1.5rem",
           }}
@@ -343,6 +377,131 @@ export default function SettingsPage() {
             />
           </div>
         )}
+      </section>
+
+      {/* Personal AI Settings Section */}
+      <section
+        style={{
+          background: "var(--color-bg-secondary)",
+          padding: "1.5rem",
+          borderRadius: "16px",
+          border: "1px solid var(--color-border)",
+          marginTop: "1.5rem",
+        }}
+      >
+        <h2
+          style={{
+            fontSize: "1.2rem",
+            marginBottom: "1rem",
+            display: "flex",
+            alignItems: "center",
+            gap: "0.5rem",
+          }}
+        >
+          <User size={20} />
+          パーソナルAI設定
+        </h2>
+        <p
+          style={{
+            color: "var(--color-text-secondary)",
+            marginBottom: "1.5rem",
+            lineHeight: 1.6,
+            fontSize: "0.9rem",
+          }}
+        >
+          基本情報や最近の悩みを設定すると、Recallなどの対話がより的確になります。
+        </p>
+
+        <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+          <div>
+            <label
+              style={{
+                display: "block",
+                fontSize: "0.85rem",
+                fontWeight: 600,
+                marginBottom: "0.5rem",
+                color: "var(--color-text-secondary)",
+              }}
+            >
+              基本情報（職業、年齢など）
+            </label>
+            <textarea
+              value={basicInfo}
+              onChange={(e) => setBasicInfo(e.target.value)}
+              placeholder="例：26歳、フリーランスのデザイナー。副業でWebサービスを開発中。"
+              style={{
+                width: "100%",
+                minHeight: "80px",
+                padding: "0.75rem",
+                borderRadius: "8px",
+                border: "1px solid var(--color-border)",
+                background: "var(--color-bg-primary)",
+                color: "var(--color-text)",
+                fontSize: "0.9rem",
+                resize: "vertical",
+              }}
+            />
+          </div>
+
+          <div>
+            <label
+              style={{
+                display: "block",
+                fontSize: "0.85rem",
+                fontWeight: 600,
+                marginBottom: "0.5rem",
+                color: "var(--color-text-secondary)",
+              }}
+            >
+              最近の悩み・関心事
+            </label>
+            <textarea
+              value={currentConcerns}
+              onChange={(e) => setCurrentConcerns(e.target.value)}
+              placeholder="例：キャリアの方向性を考え中。サービスの収益化をどう進めるか悩んでいる。"
+              style={{
+                width: "100%",
+                minHeight: "80px",
+                padding: "0.75rem",
+                borderRadius: "8px",
+                border: "1px solid var(--color-border)",
+                background: "var(--color-bg-primary)",
+                color: "var(--color-text)",
+                fontSize: "0.9rem",
+                resize: "vertical",
+              }}
+            />
+          </div>
+
+          <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
+            <button
+              onClick={handleSaveProfile}
+              disabled={isSavingProfile}
+              className="btn-primary"
+              style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}
+            >
+              {isSavingProfile ? (
+                <Loader2 className="animate-spin" size={18} />
+              ) : (
+                <Check size={18} />
+              )}
+              {isSavingProfile ? "保存中..." : "設定を保存"}
+            </button>
+
+            {profileStatus && (
+              <span
+                style={{
+                  fontSize: "0.85rem",
+                  color: profileStatus.includes("エラー")
+                    ? "#ef4444"
+                    : "#10b981",
+                }}
+              >
+                {profileStatus}
+              </span>
+            )}
+          </div>
+        </div>
       </section>
     </div>
   );

@@ -149,12 +149,8 @@ export function TopicAnalysisSection({
             {isWeekly ? "週次インサイト" : "変化とインサイト"}
           </h2>
           <button
-            onClick={() => setMode("IDLE")}
-            onClickCapture={() => {
-              setMode("IDLE");
-              handleGeneratePrompt();
-            }}
-            disabled={loading}
+            onClick={handleAutoAnalyze}
+            disabled={autoLoading}
             style={{
               fontSize: "0.85rem",
               fontWeight: 600,
@@ -163,10 +159,11 @@ export function TopicAnalysisSection({
               backgroundColor: "var(--color-accent-primary)",
               border: "none",
               borderRadius: "20px",
-              cursor: loading ? "wait" : "pointer",
+              cursor: autoLoading ? "wait" : "pointer",
+              opacity: autoLoading ? 0.7 : 1,
             }}
           >
-            {loading ? "準備中..." : "🔄 再分析する"}
+            {autoLoading ? "分析中..." : "🔄 再分析する"}
           </button>
         </div>
 

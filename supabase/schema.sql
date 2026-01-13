@@ -89,3 +89,23 @@ $$;
 -- Note: Creating buckets via SQL varies by platform. Assuming standard Supabase storage schema if available.
 -- For now, user needs to create 'entry_images' bucket in Dashboard.
 
+-- Table: user_profiles (for personal AI prompt customization)
+create table if not exists public.user_profiles (
+  id uuid primary key default uuid_generate_v4(),
+  user_id text default 'default_user' unique,
+  basic_info text, -- 基本情報（職業、年齢など）
+  current_concerns text, -- 最近の悩み
+  preferences jsonb default '{}'::jsonb,
+  created_at timestamp with time zone default timezone('utc'::text, now()) not null,
+  updated_at timestamp with time zone default timezone('utc'::text, now()) not null
+);
+
+-- RLS for user_profiles
+alter table public.user_profiles enable row level security;
+
+drop policy if exists "server_only_user_profiles" on public.user_profiles;
+create policy "server_only_user_profiles"
+on public.user_profiles
+for all
+using (auth.role() = 'service_role')
+with check (auth.role() = 'service_role');
