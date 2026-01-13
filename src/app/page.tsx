@@ -1,5 +1,6 @@
 import { EntryList } from "@/components/EntryList";
 import { QuickInput } from "@/components/QuickInput";
+import { MemoryLane } from "@/components/MemoryLane";
 import { getEntries, getTopics } from "@/lib/storage";
 import { Entry, Topic } from "@/lib/types";
 
@@ -162,6 +163,9 @@ export default async function Home() {
           </div>
         </div>
       </div>
+
+      {/* Memory Lane - Past Entries */}
+      {entries.length > 7 && <MemoryLane entries={entries} />}
 
       {/* Entry List */}
       <EntryList entries={entries} topics={topics} />
