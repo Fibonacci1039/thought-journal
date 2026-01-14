@@ -106,12 +106,23 @@ export async function createEntryAction(
     // Generate Embedding
     let embedding: number[] | undefined;
     try {
+      console.log(
+        `[CreateEntry] Generating embedding for: ${entry.title || "(No Title)"}`
+      );
       const vec = await generateEmbedding(
         `${entry.title || ""} ${entry.human_view}`
       );
-      if (vec) embedding = vec;
+      if (vec) {
+        embedding = vec;
+        console.log(
+          `[CreateEntry] Embedding generated successfully (dimensions: ${vec.length})`
+        );
+      } else {
+        console.warn("[CreateEntry] Embedding generation returned undefined");
+      }
     } catch (e) {
-      console.error("Embedding generation failed", e);
+      console.error("[CreateEntry] Embedding generation failed:", e);
+      // Continue without embedding (can be re-indexed later)
     }
 
     const newEntry = await createEntry({
@@ -370,7 +381,7 @@ export async function chatWithPastAction(query: string) {
           success: true,
           data: {
             response:
-              "まだ記録がインデックスされていません。設定ページで「Index Memories Now」を実行してください。",
+              "まだ記録がインデックスされていません。新しい記録を作成すると、自動的にインデックスが生成されます。",
             sources: [],
           },
           usage,

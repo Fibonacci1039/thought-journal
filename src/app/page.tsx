@@ -2,6 +2,7 @@ import { EntryList } from "@/components/EntryList";
 import { QuickInput } from "@/components/QuickInput";
 import { MemoryLane } from "@/components/MemoryLane";
 import { getEntries, getTopics } from "@/lib/storage";
+import { getSubscriptionStatus } from "@/lib/subscription";
 import { Entry, Topic } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -39,12 +40,18 @@ function calculateStreak(entries: Entry[]): number {
 export default async function Home() {
   let entries: Entry[] = [];
   let topics: Topic[] = [];
+  let isPro = false;
   let error = null;
 
   try {
-    const [e, t] = await Promise.all([getEntries(), getTopics()]);
+    const [e, t, sub] = await Promise.all([
+      getEntries(),
+      getTopics(),
+      getSubscriptionStatus(),
+    ]);
     entries = e;
     topics = t;
+    isPro = sub.isPro;
   } catch (err) {
     console.error("Database Error FULL:", JSON.stringify(err, null, 2));
     if (err instanceof Error) console.error("Error Message:", err.message);
@@ -165,7 +172,7 @@ export default async function Home() {
       </div>
 
       {/* Memory Lane - Past Entries */}
-      {entries.length > 7 && <MemoryLane entries={entries} />}
+      {entries.length > 7 && <MemoryLane entries={entries} isPro={isPro} />}
 
       {/* Entry List */}
       <EntryList entries={entries} topics={topics} />
