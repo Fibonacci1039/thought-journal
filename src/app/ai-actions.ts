@@ -348,6 +348,12 @@ export async function saveWeeklySummaryAction(jsonString: string) {
  * 1クリックでトピック分析を実行し、結果を保存する
  * Gemini APIを直接呼び出す
  */
+// ... (imports)
+
+/**
+ * 1クリックでトピック分析を実行し、結果を保存する
+ * Groq API (Llama 3) を優先し、利用できない場合は Gemini API を使用する
+ */
 export async function autoAnalyzeTopicAction(
   topicId: string,
   topicName: string
@@ -433,45 +439,66 @@ ${customInstructions}
 ${ANALYSIS_SCHEMA}
     `;
 
-    // 4. Call Groq API
-    const Groq = (await import("groq-sdk")).default;
-    const apiKey = process.env.GROQ_API_KEY;
+    // 4. Call AI API (Groq -> Fallback to Gemini)
+    let responseText = "";
+    let usedProvider = "none";
 
-    if (!apiKey) {
-      return { success: false, error: "API Key not configured" };
+    // Try Groq first
+    if (process.env.GROQ_API_KEY) {
+      try {
+        const Groq = (await import("groq-sdk")).default;
+        const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
+        const completion = await groq.chat.completions.create({
+          messages: [
+            {
+              role: "system",
+              content:
+                "You are a helpful assistant that returns structured JSON responses.",
+            },
+            { role: "user", content: prompt },
+          ],
+          model: "llama-3.3-70b-versatile",
+          response_format: { type: "json_object" },
+          temperature: 0.7,
+        });
+        responseText = completion.choices[0]?.message?.content || "";
+        usedProvider = "groq";
+      } catch (e) {
+        console.error("Groq API failed, trying Gemini...", e);
+      }
     }
 
-    const groq = new Groq({ apiKey });
+    // fallback to Gemini
+    if (!responseText && process.env.GEMINI_API_KEY) {
+      try {
+        const { GoogleGenerativeAI } = await import("@google/generative-ai");
+        const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+        const model = genAI.getGenerativeModel({
+          model: "gemini-1.5-flash",
+          generationConfig: { responseMimeType: "application/json" },
+        });
+        const result = await model.generateContent(prompt);
+        responseText = result.response.text();
+        usedProvider = "gemini";
+      } catch (e) {
+        console.error("Gemini API failed:", e);
+      }
+    }
 
-    const completion = await groq.chat.completions.create({
-      messages: [
-        {
-          role: "system",
-          content:
-            "You are a helpful assistant that analyzes journal entries and returns structured JSON responses.",
-        },
-        {
-          role: "user",
-          content: prompt,
-        },
-      ],
-      model: "llama-3.3-70b-versatile",
-      response_format: { type: "json_object" },
-      temperature: 0.7,
-    });
+    if (!responseText) {
+      return {
+        success: false,
+        error: "利用可能なAIプロバイダーがありません (API Key Error)",
+      };
+    }
 
-    const responseText = completion.choices[0]?.message?.content || "";
-
-    // 5. Parse JSON from response
+    // 5. Parse JSON
     let aiKnowledge;
     try {
-      // Clean up potential markdown formatting
       const cleanedJson = responseText
         .replace(/```json/g, "")
         .replace(/```/g, "")
         .trim();
-
-      // Try to extract JSON object
       const firstOpen = cleanedJson.indexOf("{");
       const lastClose = cleanedJson.lastIndexOf("}");
       if (firstOpen !== -1 && lastClose !== -1 && lastClose > firstOpen) {
