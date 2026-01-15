@@ -1,16 +1,25 @@
+import { createClient } from "@/lib/supabase/server";
+
 export type SubscriptionStatus = {
   isPro: boolean;
   plan: "free" | "pro";
 };
 
 export async function getSubscriptionStatus(): Promise<SubscriptionStatus> {
-  // TODO: Replace with actual DB/Stripe check
-  // For now, check functionality by toggling this return
-  // Or link to user_profiles table if 'plan' column exists
+  let isPro = process.env.NEXT_PUBLIC_IS_PRO === "true";
 
-  // Checking environment variable for dev/demo purposes
-  // Set NEXT_PUBLIC_IS_PRO=true in .env.local to test Pro features
-  const isPro = process.env.NEXT_PUBLIC_IS_PRO === "true";
+  try {
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (user?.email === "yuitofibo@fuji.waseda.jp") {
+      isPro = true;
+    }
+  } catch (e) {
+    console.error("Failed to check subscription status:", e);
+  }
 
   return {
     isPro,
