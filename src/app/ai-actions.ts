@@ -144,6 +144,13 @@ export async function saveAnalysisResultAction(
     // B. Save to Database
     const { createClient } = await import("@/lib/supabase/server");
     const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) {
+      return { success: false, error: "Unauthorized" };
+    }
 
     const now = new Date();
     // Use fixed "all-time" range logic for now
@@ -151,6 +158,7 @@ export async function saveAnalysisResultAction(
 
     const { error } = await supabase.from("periodic_summaries").insert({
       topic_id: topicId,
+      user_id: user.id, // Explicitly set user_id
       period_start: now.toISOString(), // Placeholder
       period_end: periodEnd,
       human_summary: aiKnowledge.reason || "手動分析完了",
@@ -163,7 +171,9 @@ export async function saveAnalysisResultAction(
     return { success: true };
   } catch (e: unknown) {
     console.error("Save Analysis Error:", e);
-    return { success: false, error: "データの保存に失敗しました" };
+    const errorMessage =
+      e instanceof Error ? e.message : "データの保存に失敗しました";
+    return { success: false, error: errorMessage };
   }
 }
 
@@ -519,12 +529,20 @@ ${ANALYSIS_SCHEMA}
     // 6. Save to Database
     const { createClient } = await import("@/lib/supabase/server");
     const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) {
+      return { success: false, error: "Unauthorized" };
+    }
 
     const now = new Date();
     const { error: dbError } = await supabase
       .from("periodic_summaries")
       .insert({
         topic_id: topicId,
+        user_id: user.id, // Explicitly set user_id
         period_start: now.toISOString(),
         period_end: now.toISOString(),
         human_summary: aiKnowledge.reason || "AI自動分析",
