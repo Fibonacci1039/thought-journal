@@ -1,7 +1,7 @@
 "use client";
 
 import { Topic, Entry } from "@/lib/types";
-import { X, Calendar, Edit2, ExternalLink } from "lucide-react";
+import { X, Calendar, ExternalLink } from "lucide-react";
 import Link from "next/link";
 
 type Props = {

@@ -15,14 +15,22 @@ import { generateEmbedding } from "@/lib/embeddings";
 import { checkUsageLimit, recordUsage } from "@/lib/usage";
 
 // Helper to handle Postgrest errors
-function handleDbError(e: any): { success: false; error: string } {
+type PostgresError = {
+  code?: string;
+  message?: string;
+  error?: { message?: string };
+};
+
+function handleDbError(e: unknown): { success: false; error: string } {
   console.error("Database error:", e);
-  if (e?.code === "23505") {
+  const err = e as PostgresError;
+  if (err?.code === "23505") {
     // Unique violation
     return { success: false, error: "このトピック名は既に使用されています" };
   }
   // Return more detailed error message for debugging
-  const errorMessage = e?.message || e?.error?.message || "操作に失敗しました";
+  const errorMessage =
+    err?.message || err?.error?.message || "操作に失敗しました";
   return { success: false, error: errorMessage };
 }
 
@@ -293,6 +301,10 @@ export async function analyzeTopicContentAction(
 
 // (Removed local generateEmbedding function in favor of imported one)
 
+// -- Personal AI (RAG) --
+
+// (Removed local generateEmbedding function in favor of imported one)
+
 export async function chatWithPastAction(query: string) {
   try {
     // Check usage limit first
@@ -305,23 +317,8 @@ export async function chatWithPastAction(query: string) {
       };
     }
 
-    const { createClient } = await import("@supabase/supabase-js");
-
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    // Use service role key to bypass RLS
-    const supabaseKey =
-      process.env.SUPABASE_SERVICE_ROLE_KEY ||
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-
-    if (!supabaseUrl || !supabaseKey) {
-      console.error("Supabase credentials missing:", {
-        supabaseUrl: !!supabaseUrl,
-        supabaseKey: !!supabaseKey,
-      });
-      return { success: false, error: "Database configuration error" };
-    }
-
-    const supabase = createClient(supabaseUrl, supabaseKey);
+    const { createClient } = await import("@/lib/supabase/server");
+    const supabase = await createClient();
 
     // 1. Generate Query Embedding
     const queryVector = await generateEmbedding(query);
@@ -336,6 +333,7 @@ export async function chatWithPastAction(query: string) {
     console.log("Query embedding generated, length:", queryVector.length);
 
     // 2. Search Similar Entries (RPC)
+    // RPC call will invoke match_entries with the current user context (RLS applies)
     const { data: similarEntries, error: searchError } = await supabase.rpc(
       "match_entries",
       {
@@ -428,23 +426,30 @@ export async function chatWithPastAction(query: string) {
     let userProfileContext = "";
     let customRecallPrompt = "";
     try {
-      const { data: profile } = await supabaseServiceRole
-        .from("user_profiles")
-        .select("basic_info, current_concerns, preferences")
-        .eq("user_id", "default_user")
-        .single();
+      // Get current user ID
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
 
-      if (profile) {
-        if (profile.basic_info) {
-          userProfileContext += `\nUser Profile: ${profile.basic_info}`;
-        }
-        if (profile.current_concerns) {
-          userProfileContext += `\nCurrent Concerns: ${profile.current_concerns}`;
-        }
-        // Get custom recall prompt if set (Pro feature)
-        const prefs = profile.preferences as Record<string, string> | null;
-        if (prefs?.recallPrompt) {
-          customRecallPrompt = prefs.recallPrompt;
+      if (user) {
+        const { data: profile } = await supabase
+          .from("user_profiles")
+          .select("basic_info, current_concerns, preferences")
+          .eq("user_id", user.id) // Use actual user ID
+          .single();
+
+        if (profile) {
+          if (profile.basic_info) {
+            userProfileContext += `\nUser Profile: ${profile.basic_info}`;
+          }
+          if (profile.current_concerns) {
+            userProfileContext += `\nCurrent Concerns: ${profile.current_concerns}`;
+          }
+          // Get custom recall prompt if set (Pro feature)
+          const prefs = profile.preferences as Record<string, string> | null;
+          if (prefs?.recallPrompt) {
+            customRecallPrompt = prefs.recallPrompt;
+          }
         }
       }
     } catch {
@@ -466,9 +471,10 @@ export async function chatWithPastAction(query: string) {
      ${contextText}
      
      Instructions:
-     - Answer in the same language as the query (Japanese).
-     - Cite specific past thoughts if relevant (e.g., "Earlier you mentioned...", "On [Date] you felt...").
-     - If the context doesn't contain the answer, say "I don't recall reading about that in your journal."
+     - IMPORTANT: Respond ONLY in Japanese (日本語). Do NOT use any Chinese characters or other languages.
+     - Answer in natural, fluent Japanese.
+     - Cite specific past thoughts if relevant (e.g., "以前こう書いていました...", "[日付]にはこう感じていたようです...").
+     - If the context doesn't contain the answer, say "その件については記録が見つかりませんでした。"
      - Be empathetic and thoughtful.
      - If user profile is provided, use it to give more personalized and relevant responses.
      ${customInstructions}
@@ -479,7 +485,7 @@ export async function chatWithPastAction(query: string) {
         {
           role: "system",
           content:
-            "You are a helpful assistant that answers questions based on the user's journal entries.",
+            "あなたはユーザーのジャーナル記録に基づいて質問に答えるアシスタントです。必ず日本語のみで回答してください。中国語やその他の言語は使用しないでください。",
         },
         {
           role: "user",
@@ -514,13 +520,10 @@ export async function generateEntryEmbeddingAction(
   const vector = await generateEmbedding(content);
   if (!vector) return { success: false, error: "Embedding failed" };
 
-  const { createClient } = await import("@supabase/supabase-js");
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-  const supabaseKey =
-    process.env.SUPABASE_SERVICE_ROLE_KEY ||
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-  const supabase = createClient(supabaseUrl, supabaseKey);
+  const { createClient } = await import("@/lib/supabase/server");
+  const supabase = await createClient();
 
+  // RLS will ensure user only updates their own entry
   const { error } = await supabase
     .from("entries")
     .update({ embedding: vector })
@@ -532,25 +535,22 @@ export async function generateEntryEmbeddingAction(
 
 export async function listEntriesMissingEmbeddingAction() {
   try {
-    const { createClient } = await import("@supabase/supabase-js");
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-    const supabaseKey =
-      process.env.SUPABASE_SERVICE_ROLE_KEY ||
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-    const supabase = createClient(supabaseUrl, supabaseKey);
+    const { createClient } = await import("@/lib/supabase/server");
+    const supabase = await createClient();
 
     // Fetch entries where embedding is null
+    // RLS ensures we only see our own entries
     const { data, error } = await supabase
       .from("entries")
       .select("id, human_view")
       .is("embedding", null)
-      .limit(100); // Process in batches of 100 to be safe
+      .limit(100);
 
     if (error) throw error;
     return { success: true, data };
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error("List Entries Error:", e);
-    return { success: false, error: e.message };
+    return { success: false, error: (e as Error).message };
   }
 }
 
@@ -572,19 +572,23 @@ export async function findRelatedEntriesAction(text: string) {
 
 // -- User Profile (Personal AI Settings) --
 
-import { createClient } from "@supabase/supabase-js";
-
-const supabaseServiceRole = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+// Removed separate createClient import, using lazy import inside functions if needed
+// Actually, let's keep it consistent.
 
 export async function getUserProfileAction() {
   try {
-    const { data, error } = await supabaseServiceRole
+    const { createClient } = await import("@/lib/supabase/server");
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) return { success: false, error: "Unauthorized" };
+
+    const { data, error } = await supabase
       .from("user_profiles")
       .select("*")
-      .eq("user_id", "default_user")
+      .eq("user_id", user.id)
       .single();
 
     if (error && error.code !== "PGRST116") {
@@ -592,6 +596,7 @@ export async function getUserProfileAction() {
       throw error;
     }
 
+    // Return empty profile object if none exists, instead of null error
     return { success: true, data: data || null };
   } catch (e: unknown) {
     console.error("Get User Profile Error:", e);
@@ -609,8 +614,16 @@ export async function saveUserProfileAction(
   }
 ) {
   try {
+    const { createClient } = await import("@/lib/supabase/server");
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) return { success: false, error: "Unauthorized" };
+
     const updateData: Record<string, unknown> = {
-      user_id: "default_user",
+      user_id: user.id,
       basic_info: basicInfo,
       current_concerns: currentConcerns,
       updated_at: new Date().toISOString(),
@@ -621,7 +634,7 @@ export async function saveUserProfileAction(
       updateData.preferences = preferences;
     }
 
-    const { data, error } = await supabaseServiceRole
+    const { data, error } = await supabase
       .from("user_profiles")
       .upsert(updateData, { onConflict: "user_id" })
       .select()

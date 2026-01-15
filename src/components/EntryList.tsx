@@ -7,7 +7,6 @@ import { Entry, Topic, EntryType } from "@/lib/types";
 import {
   Clock,
   Link as LinkIcon,
-  Hash,
   FileText,
   Zap,
   Quote,
@@ -133,9 +132,8 @@ export function EntryList({
   if (entries.length === 0) {
     return (
       <div
-        className="glass-card"
+        className="glass-card responsive-p-3rem"
         style={{
-          padding: "3rem",
           textAlign: "center",
           color: "var(--color-text-tertiary)",
         }}
@@ -273,8 +271,8 @@ export function EntryList({
       {/* Empty State for filtered */}
       {filteredEntries.length === 0 && (
         <div
+          className="responsive-p-2rem"
           style={{
-            padding: "2rem",
             textAlign: "center",
             color: "var(--color-text-tertiary)",
           }}
@@ -290,7 +288,7 @@ export function EntryList({
           const dateObj = formatDateHeader(groupEntries[0].created_at);
 
           return (
-            <div key={dateKey} style={{ marginBottom: "2rem" }}>
+            <div key={dateKey} style={{ marginBottom: "1.25rem" }}>
               {/* Date Header */}
               <div
                 style={{
@@ -300,7 +298,7 @@ export function EntryList({
                   backgroundColor: "var(--content-bg)",
                   paddingBottom: "0.5rem",
                   paddingTop: "0.5rem",
-                  marginBottom: "0.5rem",
+                  marginBottom: "0.25rem",
                   borderBottom: "1px solid var(--color-border)",
                   display: "flex",
                   alignItems: "baseline",
@@ -359,8 +357,8 @@ export function EntryList({
                         style={{
                           display: "flex",
                           alignItems: "center",
-                          gap: "0.75rem",
-                          padding: "0.6rem 1rem",
+                          gap: "0.6rem",
+                          padding: "0.5rem 0.8rem",
                           cursor: "pointer",
                           borderRadius: "8px",
                           transition: "background 0.2s",
@@ -421,8 +419,8 @@ export function EntryList({
                       style={{
                         display: "flex",
                         alignItems: "flex-start",
-                        gap: "1rem",
-                        padding: "1.25rem",
+                        gap: "0.75rem",
+                        padding: "0.9rem",
                         backgroundColor: "var(--color-bg-primary)",
                         borderRadius: "12px",
                         border: "1px solid var(--color-border)",

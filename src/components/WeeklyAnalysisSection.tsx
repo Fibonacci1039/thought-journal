@@ -11,8 +11,18 @@ import { checkUsageLimit } from "@/lib/usage";
 import { UsageCheckResult } from "@/lib/usage-types";
 import { UsageLimitModal } from "./UsageLimitModal";
 import { UsageIndicator } from "./UsageIndicator";
+import {
+  RotateCcw,
+  Check,
+  Target,
+  Lightbulb,
+  Compass,
+  BarChart2,
+  FileText,
+} from "lucide-react";
 
 type Props = {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- AI-generated JSON has dynamic schema
   initialData?: any;
 };
 
@@ -25,6 +35,7 @@ export function WeeklyAnalysisSection({ initialData }: Props) {
   const [mode, setMode] = useState<"IDLE" | "PROMPT_SHOWN" | "DONE" | "VIEW">(
     initialData ? "VIEW" : "IDLE"
   );
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- AI result has dynamic structure
   const [result, setResult] = useState<any>(
     initialData?.ai_knowledge || initialData || null
   );
@@ -103,13 +114,13 @@ export function WeeklyAnalysisSection({ initialData }: Props) {
       }
 
       // 3. Try parsing
-      let parsed;
+      let _parsed;
       try {
-        parsed = JSON.parse(jsonString);
-      } catch (e) {
+        _parsed = JSON.parse(jsonString);
+      } catch {
         // If strict parse fails, it might be due to loose formatting.
         // For now, let's just create a valid object if we can't parse, or throw.
-        console.error("JSON Parsing failed", e);
+        console.error("JSON Parsing failed in WeeklyAnalysisSection");
         throw new Error(
           "JSONデータの解析に失敗しました。正しいJSON形式が含まれているか確認してください。"
         );
@@ -137,8 +148,10 @@ export function WeeklyAnalysisSection({ initialData }: Props) {
       } else {
         throw new Error(res.error || "保存に失敗しました");
       }
-    } catch (e: any) {
-      alert("エラー: " + (e.message || "予期せぬエラーが発生しました"));
+    } catch (e: unknown) {
+      const errMsg =
+        e instanceof Error ? e.message : "予期せぬエラーが発生しました";
+      alert("エラー: " + errMsg);
     } finally {
       setLoading(false);
     }
@@ -153,8 +166,8 @@ export function WeeklyAnalysisSection({ initialData }: Props) {
     <>
       <div
         style={{
-          marginTop: "2rem",
-          padding: "1.5rem",
+          marginTop: "1.5rem",
+          padding: "1.25rem",
           borderRadius: "12px",
           backgroundColor: "var(--color-bg-tertiary)",
           border: "1px solid var(--color-border)",
@@ -169,7 +182,7 @@ export function WeeklyAnalysisSection({ initialData }: Props) {
             gap: "0.5rem",
           }}
         >
-          <span>📝</span> 週次レビュー (AI Analysis)
+          <FileText size={20} /> 週次レビュー (AI Analysis)
         </h3>
 
         <p
@@ -189,64 +202,140 @@ export function WeeklyAnalysisSection({ initialData }: Props) {
             style={{
               display: "grid",
               gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))",
-              gap: "0.75rem",
-              marginBottom: "1.5rem",
-              opacity: 0.6,
+              gap: "1rem",
+              marginBottom: "2rem",
             }}
           >
             <div
               style={{
-                padding: "1rem",
-                background: "var(--color-bg-primary)",
-                borderRadius: "10px",
-                border: "1px dashed var(--color-border)",
+                padding: "1.25rem 1rem",
+                background: "var(--color-bg-secondary)",
+                borderRadius: "12px",
+                border: "1px solid var(--color-border)",
                 textAlign: "center",
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                gap: "0.5rem",
               }}
             >
-              <div style={{ fontSize: "1.5rem", marginBottom: "0.25rem" }}>
-                🎯
+              <div
+                style={{
+                  fontSize: "1.75rem",
+                  background: "rgba(255, 159, 10, 0.1)",
+                  width: "48px",
+                  height: "48px",
+                  borderRadius: "50%",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  marginBottom: "0.25rem",
+                }}
+              >
+                <Target size={24} color="#f59e0b" />
               </div>
               <div
                 style={{
-                  fontSize: "0.75rem",
-                  color: "var(--color-text-tertiary)",
+                  fontSize: "0.9rem",
+                  fontWeight: 600,
+                  color: "var(--color-text-secondary)",
                 }}
               >
                 今週のテーマ
               </div>
-            </div>
-            <div
-              style={{
-                padding: "1rem",
-                background: "var(--color-bg-primary)",
-                borderRadius: "10px",
-                border: "1px dashed var(--color-border)",
-                textAlign: "center",
-              }}
-            >
-              <div style={{ fontSize: "1.5rem", marginBottom: "0.25rem" }}>
-                💡
-              </div>
               <div
                 style={{
                   fontSize: "0.75rem",
                   color: "var(--color-text-tertiary)",
+                }}
+              >
+                活動の焦点を明確化
+              </div>
+            </div>
+
+            <div
+              style={{
+                padding: "1.25rem 1rem",
+                background: "var(--color-bg-secondary)",
+                borderRadius: "12px",
+                border: "1px solid var(--color-border)",
+                textAlign: "center",
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                gap: "0.5rem",
+              }}
+            >
+              <div
+                style={{
+                  fontSize: "1.75rem",
+                  background: "rgba(59, 130, 246, 0.1)",
+                  width: "48px",
+                  height: "48px",
+                  borderRadius: "50%",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  marginBottom: "0.25rem",
+                }}
+              >
+                <Lightbulb size={24} color="#3b82f6" />
+              </div>
+              <div
+                style={{
+                  fontSize: "0.9rem",
+                  fontWeight: 600,
+                  color: "var(--color-text-secondary)",
                 }}
               >
                 インサイト
               </div>
+              <div
+                style={{
+                  fontSize: "0.75rem",
+                  color: "var(--color-text-tertiary)",
+                }}
+              >
+                隠れた思考のパターン
+              </div>
             </div>
+
             <div
               style={{
-                padding: "1rem",
-                background: "var(--color-bg-primary)",
-                borderRadius: "10px",
-                border: "1px dashed var(--color-border)",
+                padding: "1.25rem 1rem",
+                background: "var(--color-bg-secondary)",
+                borderRadius: "12px",
+                border: "1px solid var(--color-border)",
                 textAlign: "center",
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                gap: "0.5rem",
               }}
             >
-              <div style={{ fontSize: "1.5rem", marginBottom: "0.25rem" }}>
-                🚀
+              <div
+                style={{
+                  fontSize: "1.75rem",
+                  background: "rgba(16, 185, 129, 0.1)",
+                  width: "48px",
+                  height: "48px",
+                  borderRadius: "50%",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  marginBottom: "0.25rem",
+                }}
+              >
+                <Compass size={24} color="#10b981" />
+              </div>
+              <div
+                style={{
+                  fontSize: "0.9rem",
+                  fontWeight: 600,
+                  color: "var(--color-text-secondary)",
+                }}
+              >
+                来週の指針
               </div>
               <div
                 style={{
@@ -254,7 +343,7 @@ export function WeeklyAnalysisSection({ initialData }: Props) {
                   color: "var(--color-text-tertiary)",
                 }}
               >
-                来週の指針
+                具体的なアクション
               </div>
             </div>
           </div>
@@ -491,7 +580,7 @@ export function WeeklyAnalysisSection({ initialData }: Props) {
                 gap: "0.5rem",
               }}
             >
-              <span>📊</span> 週次インサイト
+              <BarChart2 size={20} /> 週次インサイト
             </h3>
             <span
               style={{
@@ -519,9 +608,12 @@ export function WeeklyAnalysisSection({ initialData }: Props) {
                 color: "var(--color-accent)",
                 marginBottom: "0.25rem",
                 fontWeight: 600,
+                display: "flex",
+                alignItems: "center",
+                gap: "0.25rem",
               }}
             >
-              🎯 今週のテーマ
+              <Target size={14} /> 今週のテーマ
             </div>
             <div style={{ fontSize: "1rem", fontWeight: 600 }}>
               {result.theme || result.current_status || "テーマなし"}
@@ -537,9 +629,12 @@ export function WeeklyAnalysisSection({ initialData }: Props) {
                   color: "var(--color-subtle)",
                   marginBottom: "0.5rem",
                   fontWeight: 600,
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "0.25rem",
                 }}
               >
-                💡 インサイト
+                <Lightbulb size={14} /> インサイト
               </div>
               <p
                 style={{
@@ -569,9 +664,12 @@ export function WeeklyAnalysisSection({ initialData }: Props) {
                   color: "#10b981",
                   marginBottom: "0.25rem",
                   fontWeight: 600,
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "0.25rem",
                 }}
               >
-                🚀 来週のアクション
+                <Compass size={14} /> 来週のアクション
               </div>
               <p style={{ fontSize: "0.95rem", lineHeight: 1.6 }}>
                 {result.action_item}
@@ -579,21 +677,60 @@ export function WeeklyAnalysisSection({ initialData }: Props) {
             </div>
           )}
 
-          {/* Close/Re-analyze Button */}
-          <div style={{ marginTop: "1.5rem", textAlign: "center" }}>
+          {/* Actions Footer */}
+          <div
+            style={{
+              marginTop: "2rem",
+              paddingTop: "1.5rem",
+              borderTop: "1px solid var(--color-border)",
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+            }}
+          >
             <button
               onClick={() => setMode("IDLE")}
               style={{
                 background: "transparent",
-                border: "1px solid var(--color-border)",
-                color: "var(--color-subtle)",
-                padding: "0.5rem 1.25rem",
-                borderRadius: "20px",
-                cursor: "pointer",
+                color: "var(--color-text-tertiary)",
+                border: "none",
                 fontSize: "0.85rem",
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                gap: "0.4rem",
+                padding: "0.5rem",
+                borderRadius: "6px",
+                transition: "color 0.2s",
+              }}
+              onMouseEnter={(e) =>
+                (e.currentTarget.style.color = "var(--color-text-primary)")
+              }
+              onMouseLeave={(e) =>
+                (e.currentTarget.style.color = "var(--color-text-tertiary)")
+              }
+            >
+              <RotateCcw size={14} /> 再分析する
+            </button>
+
+            <button
+              onClick={() => setMode("IDLE")}
+              style={{
+                background: "var(--color-bg-primary)",
+                border: "1px solid var(--color-border)",
+                color: "var(--color-text-primary)",
+                padding: "0.6rem 1.5rem",
+                borderRadius: "8px",
+                cursor: "pointer",
+                fontWeight: 500,
+                fontSize: "0.9rem",
+                display: "flex",
+                alignItems: "center",
+                gap: "0.5rem",
+                boxShadow: "var(--shadow-sm)",
               }}
             >
-              閉じる / 再分析
+              <Check size={16} /> 閉じる
             </button>
           </div>
         </div>

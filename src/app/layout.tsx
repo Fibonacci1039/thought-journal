@@ -14,9 +14,28 @@ const playfair = Playfair_Display({
 });
 
 export const metadata: Metadata = {
-  title: "Thought Journal",
-  description: "思考を整理し、自分と向き合うジャーナルアプリ",
+  metadataBase: new URL(
+    process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"
+  ),
+  title: "Mind OS",
+  description: "思考を整理し、自分と向き合うオペレーティングシステム",
   manifest: "/manifest.json",
+  icons: {
+    icon: "/icon.png",
+    apple: "/icon.png",
+  },
+  openGraph: {
+    title: "Mind OS",
+    description: "思考を整理し、自分と向き合うオペレーティングシステム",
+    images: ["/og-image.png"],
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Mind OS",
+    description: "思考を整理し、自分と向き合うオペレーティングシステム",
+    images: ["/og-image.png"],
+  },
 };
 
 export const viewport = {

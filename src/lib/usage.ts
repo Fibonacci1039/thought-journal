@@ -1,18 +1,22 @@
 "use server";
 
-import { supabase } from "./supabase";
+import "server-only";
+import { createClient } from "./supabase/server";
 import { USAGE_LIMITS, FeatureType, UsageCheckResult } from "./usage-types";
 
 /**
  * Get the current month's usage count for a feature
  */
 export async function getMonthlyUsage(feature: FeatureType): Promise<number> {
+  const supabase = await createClient();
+
   // Calculate the start of the current month in UTC
   const now = new Date();
   const monthStart = new Date(
     Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1)
   );
 
+  // RLS ensures we only count current user's logs
   const { count, error } = await supabase
     .from("usage_logs")
     .select("*", { count: "exact", head: true })
@@ -64,7 +68,18 @@ export async function recordUsage(
   feature: FeatureType,
   metadata: Record<string, unknown> = {}
 ): Promise<void> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    console.warn("Attempted to record usage for unauthenticated user");
+    return;
+  }
+
   const { error } = await supabase.from("usage_logs").insert({
+    user_id: user.id,
     feature_type: feature,
     metadata,
   });

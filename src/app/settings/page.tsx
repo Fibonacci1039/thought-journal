@@ -7,15 +7,7 @@ import {
   getUserProfileAction,
   saveUserProfileAction,
 } from "@/app/actions";
-import {
-  Loader2,
-  Database,
-  Crown,
-  Check,
-  Sparkles,
-  User,
-  Settings,
-} from "lucide-react";
+import { Loader2, Crown, Check, Sparkles, User, Settings } from "lucide-react";
 
 export default function SettingsPage() {
   const [isSyncing, setIsSyncing] = useState(false);
@@ -115,9 +107,10 @@ export default function SettingsPage() {
         setStatus(`完了: 合計 ${totalProcessed} 件をIndex化しました。`);
         setProgress(100);
       }
-    } catch (e: any) {
+    } catch (e: unknown) {
       console.error(e);
-      setStatus(`エラーが発生しました: ${e.message}`);
+      const errMsg = e instanceof Error ? e.message : "不明なエラー";
+      setStatus(`エラーが発生しました: ${errMsg}`);
     } finally {
       setIsSyncing(false);
     }
@@ -145,7 +138,10 @@ export default function SettingsPage() {
   };
 
   return (
-    <div style={{ maxWidth: "800px", margin: "0 auto", padding: "2rem" }}>
+    <div
+      className="responsive-p-2rem"
+      style={{ maxWidth: "800px", margin: "0 auto" }}
+    >
       <h1 style={{ fontSize: "1.5rem", fontWeight: 700, marginBottom: "2rem" }}>
         Settings
       </h1>
@@ -359,7 +355,8 @@ export default function SettingsPage() {
             fontSize: "0.9rem",
           }}
         >
-          基本情報や最近の悩みを設定すると、Recallなどの対話がより的確になります。
+          基本情報や最近の悩みを設定すると、Personal
+          AIによる対話がより的確になります。
         </p>
 
         <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
@@ -533,7 +530,7 @@ export default function SettingsPage() {
                   color: "#a855f7",
                 }}
               >
-                💬 Recall 対話プロンプト
+                💬 Personal AI 対話プロンプト
               </label>
               <textarea
                 value={recallPrompt}

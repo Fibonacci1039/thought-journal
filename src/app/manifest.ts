@@ -2,13 +2,13 @@ import { MetadataRoute } from "next";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "Thought Journal",
-    short_name: "Journal",
-    description: "AI-powered thought journaling application",
+    name: "Mind OS",
+    short_name: "Mind OS",
+    description: "思考を整理し、自分と向き合うオペレーティングシステム",
     start_url: "/",
     display: "standalone",
-    background_color: "#fdfbf7",
-    theme_color: "#fdfbf7",
+    background_color: "#1c1c1e",
+    theme_color: "#2c2c2e",
     icons: [
       {
         src: "/icon-192x192.png", // We don't have these yet but defining them is standard

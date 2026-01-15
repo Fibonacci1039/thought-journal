@@ -83,15 +83,17 @@ export function MemoryLane({ entries, isPro = false }: Props) {
   };
 
   // Locked State for Free Plan
-  if (!isPro) {
+  const isDev = process.env.NEXT_PUBLIC_IS_DEV_MODE === "true";
+
+  if (!isPro && !isDev) {
     return (
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4, delay: 0.2 }}
         style={{
-          marginBottom: "2rem",
-          padding: "1.5rem",
+          marginBottom: "1.5rem",
+          padding: "1.25rem",
           background: "var(--color-bg-secondary)",
           borderRadius: "12px",
           border: "1px dashed var(--color-border)",
@@ -110,16 +112,23 @@ export function MemoryLane({ entries, isPro = false }: Props) {
           }}
         />
 
-        {/* Blurred Content Preview */}
-        <div style={{ filter: "blur(4px)", opacity: 0.5, userSelect: "none" }}>
+        {/* Blurred Content Preview - Compact */}
+        <div
+          style={{
+            filter: "blur(4px)",
+            opacity: 0.5,
+            userSelect: "none",
+            margin: "0",
+          }}
+        >
           <div
             style={{ display: "flex", gap: "0.5rem", marginBottom: "0.5rem" }}
           >
             <History size={16} /> <span>1年前の今日</span>
           </div>
-          <p>
-            今日は新しいプロジェクトのアイデアを思いついた。チームメンバーと共有して...
-            ワクワクするような始まりだった。しかし課題もいくつか見えてきたので...
+          <p style={{ fontSize: "0.85rem", lineHeight: 1.5, margin: 0 }}>
+            今日は新しいプロジェクトのアイデアを思いついた...
+            ワクワクするような始まりだった...
           </p>
         </div>
 
@@ -133,13 +142,13 @@ export function MemoryLane({ entries, isPro = false }: Props) {
             flexDirection: "column",
             alignItems: "center",
             justifyContent: "center",
-            gap: "0.75rem",
+            gap: "0.5rem",
           }}
         >
           <div
             style={{
-              width: "40px",
-              height: "40px",
+              width: "36px",
+              height: "36px",
               borderRadius: "50%",
               background: "var(--color-bg-tertiary)",
               display: "flex",
@@ -148,7 +157,7 @@ export function MemoryLane({ entries, isPro = false }: Props) {
               boxShadow: "var(--shadow-sm)",
             }}
           >
-            <Lock size={20} style={{ color: "var(--color-text-secondary)" }} />
+            <Lock size={18} style={{ color: "var(--color-text-secondary)" }} />
           </div>
           <div style={{ textAlign: "center" }}>
             <p
@@ -203,8 +212,8 @@ export function MemoryLane({ entries, isPro = false }: Props) {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4, delay: 0.2 }}
         style={{
-          marginBottom: "2rem",
-          padding: "1.25rem",
+          marginBottom: "1.5rem",
+          padding: "1rem",
           background:
             "linear-gradient(135deg, rgba(139, 92, 246, 0.08), rgba(168, 85, 247, 0.04))",
           borderRadius: "12px",

@@ -8,10 +8,13 @@ import { createEntryAction, updateEntryAction } from "@/app/actions";
 import { uploadImage } from "@/lib/client-storage";
 import { ImageUploader } from "@/components/ImageUploader";
 import { Mic, MicOff, Book, Save } from "lucide-react";
+import { CompletionRitual } from "./CompletionRitual";
 
 // Extend Window for Speech API
+
 declare global {
   interface Window {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     speechRecognitionInstance: any;
   }
 }
@@ -30,6 +33,7 @@ const DEFAULT_AI_VIEW = {
 export function EntryForm({ topics, initialData, presetPrompt }: Props) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
+  const [showRitual, setShowRitual] = useState(false);
 
   // Minimalist Form State
   const [title, setTitle] = useState(initialData?.title || "");
@@ -66,9 +70,11 @@ export function EntryForm({ topics, initialData, presetPrompt }: Props) {
       // Actually, simple start/stop logic:
       window.speechRecognitionInstance?.stop();
     } else {
+      /* eslint-disable @typescript-eslint/no-explicit-any */
       const SpeechRecognition =
         (window as any).SpeechRecognition ||
         (window as any).webkitSpeechRecognition;
+      /* eslint-enable @typescript-eslint/no-explicit-any */
       if (!SpeechRecognition) {
         alert(
           "お使いのブラウザは音声入力に対応していません (Chrome/Safari推奨)"
@@ -84,6 +90,7 @@ export function EntryForm({ topics, initialData, presetPrompt }: Props) {
       recognition.onstart = () => setIsListening(true);
       recognition.onend = () => setIsListening(false);
 
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- SpeechRecognitionEvent not available in TypeScript
       recognition.onresult = (event: any) => {
         let finalTranscript = "";
         for (let i = event.resultIndex; i < event.results.length; ++i) {
@@ -96,6 +103,7 @@ export function EntryForm({ topics, initialData, presetPrompt }: Props) {
         }
       };
 
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- SpeechRecognitionErrorEvent not available in TypeScript
       recognition.onerror = (event: any) => {
         console.error(event.error);
         setIsListening(false);
@@ -181,15 +189,19 @@ export function EntryForm({ topics, initialData, presetPrompt }: Props) {
         throw new Error(errorMsg);
       }
 
-      alert("記録しました");
-      router.push("/");
-      router.refresh();
-    } catch (e: any) {
+      // Instead of alert/push immediate, trigger ritual
+      setShowRitual(true);
+    } catch (e: unknown) {
       const msg =
         e instanceof Error ? e.message : "保存中にエラーが発生しました";
       alert(msg);
       setLoading(false);
     }
+  };
+
+  const handleRitualComplete = () => {
+    router.push("/");
+    router.refresh();
   };
 
   const toggleTopic = (tid: string) => {
@@ -199,252 +211,258 @@ export function EntryForm({ topics, initialData, presetPrompt }: Props) {
   };
 
   return (
-    <form
-      onSubmit={handleSubmit}
-      className="animate-enter"
-      style={{
-        maxWidth: "700px",
-        margin: "0 auto",
-        display: "flex",
-        flexDirection: "column",
-        gap: "2rem",
-      }}
-    >
-      {/* 1. Header: Date & Title */}
-      <div style={{ textAlign: "center" }}>
-        <p className="text-label" style={{ marginBottom: "0.5rem" }}>
-          {new Date().toLocaleDateString("ja-JP", {
-            weekday: "long",
-            month: "long",
-            day: "numeric",
-          })}
-        </p>
-        <input
-          type="text"
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          placeholder="タイトルを入力..."
-          style={{
-            width: "100%",
-            textAlign: "center",
-            fontSize: "2rem",
-            fontWeight: 700,
-            border: "none",
-            outline: "none",
-            background: "transparent",
-            color: "var(--color-heading)",
-            fontFamily: "var(--font-sans)",
-            letterSpacing: "-0.02em",
-          }}
-        />
-      </div>
-
-      {/* 2. Zen Editor "Paper" */}
-      <div style={{ position: "relative" }}>
-        <textarea
-          required
-          autoFocus={!initialData}
-          value={narrative}
-          onChange={(e) => setNarrative(e.target.value)}
-          placeholder="今、何を考えていますか？"
-          style={{
-            width: "100%",
-            minHeight: "400px",
-            lineHeight: 1.8,
-            fontSize: "1.15rem", // Slightly larger for comfortable writing
-            fontFamily: "var(--font-sans)",
-            border: "none",
-            outline: "none",
-            resize: "none",
-            backgroundColor: "transparent", // Blend into the page like Reflection.app
-            color: "var(--color-text-primary)",
-          }}
-        />
-
-        {/* Floating Controls (Voice / Ref) - Subtle */}
-        <div
-          style={{
-            position: "absolute",
-            top: "-2rem",
-            right: "0",
-            display: "flex",
-            gap: "1rem",
-            opacity: 0.6,
-            transition: "opacity 0.2s",
-          }}
-          onMouseEnter={(e) => (e.currentTarget.style.opacity = "1")}
-          onMouseLeave={(e) => (e.currentTarget.style.opacity = "0.6")}
-        >
-          <button
-            type="button"
-            onClick={toggleListening}
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "0.3rem",
-              fontSize: "0.9rem",
-              cursor: "pointer",
-            }}
-            title={isListening ? "音声入力を停止" : "音声入力を開始"}
-          >
-            {isListening ? (
-              <MicOff size={18} color="#ef4444" />
-            ) : (
-              <Mic size={18} />
-            )}
-          </button>
-          <button
-            type="button"
-            onClick={() => setIsReferenceMode(!isReferenceMode)}
-            style={{ fontSize: "0.9rem", cursor: "pointer" }}
-            title="参考文献・引用を追加"
-          >
-            <Book size={18} />
-          </button>
-        </div>
-
-        {/* Reference Panel (Conditional) */}
-        {isReferenceMode && (
-          <div
-            className="glass-card"
-            style={{
-              padding: "1rem",
-              marginTop: "1rem",
-              background: "var(--color-bg-tertiary)",
-            }}
-          >
-            <input
-              type="url"
-              value={sourceUrl}
-              onChange={(e) => setSourceUrl(e.target.value)}
-              placeholder="参考URL (https://...)"
-              className="input-field"
-              style={{
-                marginBottom: "0.5rem",
-                fontSize: "0.9rem",
-                padding: "0.5rem",
-              }}
-            />
-            <textarea
-              value={citeText}
-              onChange={(e) => setCiteText(e.target.value)}
-              placeholder="引用テキストやメモ..."
-              style={{
-                width: "100%",
-                border: "1px solid var(--color-border)",
-                borderRadius: "8px",
-                padding: "0.5rem",
-              }}
-            />
-          </div>
-        )}
-      </div>
-
-      <ImageUploader
-        images={newImages}
-        onImagesChange={setNewImages}
-        existingImages={existingImageUrls}
-        onExistingImageRemove={handleExistingImageRemove}
-      />
-
-      {/* 3. Footer Meta (Topics & Save) */}
-      <div
+    <>
+      <form
+        onSubmit={handleSubmit}
+        className="animate-enter"
         style={{
+          maxWidth: "700px",
+          margin: "0 auto",
           display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          borderTop: "1px solid var(--color-border)",
-          paddingTop: "2rem",
-          marginTop: "2rem",
+          flexDirection: "column",
+          gap: "2rem",
         }}
       >
+        {/* 1. Header: Date & Title */}
+        <div style={{ textAlign: "center" }}>
+          <p className="text-label" style={{ marginBottom: "0.5rem" }}>
+            {new Date().toLocaleDateString("ja-JP", {
+              weekday: "long",
+              month: "long",
+              day: "numeric",
+            })}
+          </p>
+          <input
+            type="text"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            placeholder="タイトルを入力..."
+            style={{
+              width: "100%",
+              textAlign: "center",
+              fontSize: "2rem",
+              fontWeight: 700,
+              border: "none",
+              outline: "none",
+              background: "transparent",
+              color: "var(--color-heading)",
+              fontFamily: "var(--font-sans)",
+              letterSpacing: "-0.02em",
+            }}
+          />
+        </div>
+
+        {/* 2. Zen Editor "Paper" */}
+        <div style={{ position: "relative" }}>
+          <textarea
+            required
+            autoFocus={!initialData}
+            value={narrative}
+            onChange={(e) => setNarrative(e.target.value)}
+            placeholder="今、何を考えていますか？"
+            style={{
+              width: "100%",
+              minHeight: "400px",
+              lineHeight: 1.8,
+              fontSize: "1.15rem", // Slightly larger for comfortable writing
+              fontFamily: "var(--font-sans)",
+              border: "none",
+              outline: "none",
+              resize: "none",
+              backgroundColor: "transparent", // Blend into the page like Reflection.app
+              color: "var(--color-text-primary)",
+            }}
+          />
+
+          {/* Floating Controls (Voice / Ref) - Subtle */}
+          <div
+            style={{
+              position: "absolute",
+              top: "-2rem",
+              right: "0",
+              display: "flex",
+              gap: "1rem",
+              opacity: 0.6,
+              transition: "opacity 0.2s",
+            }}
+            onMouseEnter={(e) => (e.currentTarget.style.opacity = "1")}
+            onMouseLeave={(e) => (e.currentTarget.style.opacity = "0.6")}
+          >
+            <button
+              type="button"
+              onClick={toggleListening}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "0.3rem",
+                fontSize: "0.9rem",
+                cursor: "pointer",
+              }}
+              title={isListening ? "音声入力を停止" : "音声入力を開始"}
+            >
+              {isListening ? (
+                <MicOff size={18} color="#ef4444" />
+              ) : (
+                <Mic size={18} />
+              )}
+            </button>
+            <button
+              type="button"
+              onClick={() => setIsReferenceMode(!isReferenceMode)}
+              style={{ fontSize: "0.9rem", cursor: "pointer" }}
+              title="参考文献・引用を追加"
+            >
+              <Book size={18} />
+            </button>
+          </div>
+
+          {/* Reference Panel (Conditional) */}
+          {isReferenceMode && (
+            <div
+              className="glass-card"
+              style={{
+                padding: "1rem",
+                marginTop: "1rem",
+                background: "var(--color-bg-tertiary)",
+              }}
+            >
+              <input
+                type="url"
+                value={sourceUrl}
+                onChange={(e) => setSourceUrl(e.target.value)}
+                placeholder="参考URL (https://...)"
+                className="input-field"
+                style={{
+                  marginBottom: "0.5rem",
+                  fontSize: "0.9rem",
+                  padding: "0.5rem",
+                }}
+              />
+              <textarea
+                value={citeText}
+                onChange={(e) => setCiteText(e.target.value)}
+                placeholder="引用テキストやメモ..."
+                style={{
+                  width: "100%",
+                  border: "1px solid var(--color-border)",
+                  borderRadius: "8px",
+                  padding: "0.5rem",
+                }}
+              />
+            </div>
+          )}
+        </div>
+
+        <ImageUploader
+          images={newImages}
+          onImagesChange={setNewImages}
+          existingImages={existingImageUrls}
+          onExistingImageRemove={handleExistingImageRemove}
+        />
+
+        {/* 3. Footer Meta (Topics & Save) */}
         <div
           style={{
             display: "flex",
-            gap: "0.5rem",
-            flexWrap: "wrap",
-            maxWidth: "70%",
+            justifyContent: "space-between",
+            alignItems: "center",
+            borderTop: "1px solid var(--color-border)",
+            paddingTop: "2rem",
+            marginTop: "2rem",
           }}
         >
-          {topics.map((t) => (
-            <button
-              type="button"
-              key={t.id}
-              onClick={() => toggleTopic(t.id)}
-              style={{
-                fontSize: "0.8rem",
-                padding: "0.3rem 0.8rem",
-                borderRadius: "20px",
-                fontWeight: 500,
-                background: selectedTopicIds.includes(t.id)
-                  ? "rgba(255, 159, 10, 0.2)" // Orange Tint
-                  : "rgba(255,255,255,0.05)",
-                color: selectedTopicIds.includes(t.id)
-                  ? "var(--color-accent-primary)" // Orange Text
-                  : "var(--color-text-secondary)",
-                border: selectedTopicIds.includes(t.id)
-                  ? "1px solid var(--color-accent-primary)"
-                  : "1px solid transparent",
-                transition: "all 0.2s ease",
-              }}
-            >
-              {t.name}
-            </button>
-          ))}
-        </div>
-
-        <div style={{ display: "flex", gap: "1rem" }}>
-          <span
+          <div
             style={{
-              fontSize: "0.8rem",
-              color: "var(--color-text-tertiary)",
-              alignSelf: "center",
+              display: "flex",
+              gap: "0.5rem",
+              flexWrap: "wrap",
+              maxWidth: "70%",
             }}
           >
-            {narrative.length} 文字
-          </span>
-          <button
-            type="submit"
-            disabled={loading}
-            className="btn-primary"
-            style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}
-          >
-            <Save size={16} />
-            {loading ? "保存中..." : "保存する"}
-          </button>
-        </div>
-      </div>
+            {topics.map((t) => (
+              <button
+                type="button"
+                key={t.id}
+                onClick={() => toggleTopic(t.id)}
+                style={{
+                  fontSize: "0.8rem",
+                  padding: "0.3rem 0.8rem",
+                  borderRadius: "20px",
+                  fontWeight: 500,
+                  background: selectedTopicIds.includes(t.id)
+                    ? "rgba(255, 159, 10, 0.2)" // Orange Tint
+                    : "rgba(255,255,255,0.05)",
+                  color: selectedTopicIds.includes(t.id)
+                    ? "var(--color-accent-primary)" // Orange Text
+                    : "var(--color-text-secondary)",
+                  border: selectedTopicIds.includes(t.id)
+                    ? "1px solid var(--color-accent-primary)"
+                    : "1px solid transparent",
+                  transition: "all 0.2s ease",
+                }}
+              >
+                {t.name}
+              </button>
+            ))}
+          </div>
 
-      {/* Hidden Technical Fields (Summary of AI view, etc) 
+          <div style={{ display: "flex", gap: "1rem" }}>
+            <span
+              style={{
+                fontSize: "0.8rem",
+                color: "var(--color-text-tertiary)",
+                alignSelf: "center",
+              }}
+            >
+              {narrative.length} 文字
+            </span>
+            <button
+              type="submit"
+              disabled={loading}
+              className="btn-primary"
+              style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}
+            >
+              <Save size={16} />
+              {loading ? "保存中..." : "保存する"}
+            </button>
+          </div>
+        </div>
+
+        {/* Hidden Technical Fields (Summary of AI view, etc) 
           If strictly needed, keep them collapsed. For a Zen User, they don't need to see JSON input usually. 
       */}
-      <details style={{ marginTop: "2rem" }} open>
-        <summary
-          style={{
-            cursor: "pointer",
-            color: "var(--color-text-tertiary)",
-            fontSize: "0.8rem",
-          }}
-        >
-          高度な設定: AI JSONデータ
-        </summary>
-        <textarea
-          value={aiJsonInput}
-          onChange={(e) => setAiJsonInput(e.target.value)}
-          style={{
-            width: "100%",
-            height: "100px",
-            marginTop: "0.5rem",
-            padding: "0.5rem",
-            fontSize: "0.8rem",
-            fontFamily: "monospace",
-            backgroundColor: "#333", // Light Gray (relative to dark theme)
-            color: "#fff",
-            border: "1px solid var(--color-border)",
-            borderRadius: "8px",
-          }}
-        />
-      </details>
-    </form>
+        <details style={{ marginTop: "2rem" }} open>
+          <summary
+            style={{
+              cursor: "pointer",
+              color: "var(--color-text-tertiary)",
+              fontSize: "0.8rem",
+            }}
+          >
+            高度な設定: AI JSONデータ
+          </summary>
+          <textarea
+            value={aiJsonInput}
+            onChange={(e) => setAiJsonInput(e.target.value)}
+            style={{
+              width: "100%",
+              height: "100px",
+              marginTop: "0.5rem",
+              padding: "0.5rem",
+              fontSize: "0.8rem",
+              fontFamily: "monospace",
+              backgroundColor: "#333", // Light Gray (relative to dark theme)
+              color: "#fff",
+              border: "1px solid var(--color-border)",
+              borderRadius: "8px",
+            }}
+          />
+        </details>
+      </form>
+      <CompletionRitual
+        isVisible={showRitual}
+        onComplete={handleRitualComplete}
+      />
+    </>
   );
 }

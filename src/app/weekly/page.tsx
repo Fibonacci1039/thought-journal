@@ -1,7 +1,7 @@
 import { WeeklyAnalysisSection } from "@/components/WeeklyAnalysisSection";
 import Link from "next/link";
 import { getEntries } from "@/lib/storage";
-import { supabase } from "@/lib/supabase";
+import { createClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
 
@@ -12,6 +12,8 @@ export default async function WeeklyPage() {
   const weeklyCount = entries.filter(
     (e) => new Date(e.created_at) >= oneWeekAgo
   ).length;
+
+  const supabase = await createClient();
 
   // Fetch existing weekly summary if any
   const { data: latestSummary } = await supabase
@@ -43,8 +45,8 @@ export default async function WeeklyPage() {
         <WeeklyAnalysisSection initialData={initialData} />
       ) : (
         <div
+          className="responsive-p-2rem"
           style={{
-            padding: "2rem",
             textAlign: "center",
             backgroundColor: "var(--color-bg-tertiary)",
             borderRadius: "12px",

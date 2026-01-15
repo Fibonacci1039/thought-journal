@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { Image as ImageIcon, X, Upload } from "lucide-react";
+import { X, Upload } from "lucide-react";
 
 type Props = {
   images: File[];
@@ -23,6 +23,7 @@ export function ImageUploader({
   // Create previews for new files
   useEffect(() => {
     const newPreviews = images.map((file) => URL.createObjectURL(file));
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- Deriving state from prop for preview URLs
     setPreviews(newPreviews);
 
     // Cleanup

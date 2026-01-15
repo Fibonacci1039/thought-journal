@@ -21,16 +21,7 @@ export default function RecallPage() {
             gap: "0.5rem",
           }}
         >
-          <Sparkles size={20} className="text-purple-400" /> Recall{" "}
-          <span
-            style={{
-              fontSize: "0.9rem",
-              color: "var(--color-text-tertiary)",
-              fontWeight: 400,
-            }}
-          >
-            Personal AI
-          </span>
+          <Sparkles size={20} className="text-purple-400" /> Personal AI
         </h1>
       </header>
       <main

@@ -23,6 +23,7 @@ export function ThemeToggle() {
   }, []);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- Client-side initialization pattern
     setMounted(true);
     const savedMode = localStorage.getItem("themeMode") as ThemeMode | null;
     if (savedMode) {

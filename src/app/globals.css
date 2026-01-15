@@ -1,31 +1,33 @@
 :root {
-  /* Dark Theme (Default) - Soft Dark with Blue Accent */
+  /* Dark Theme (Default) - "Mind OS" Premium Matte Dark */
   --sidebar-width: 260px;
-  --sidebar-bg: #1a1d24;
-  --content-bg: #22262f;
   
-  --color-text-primary: #f3f4f6;
-  --color-text-secondary: #d1d5db;
-  --color-text-tertiary: #9ca3af;
+  /* Deeper, more sophisticated darks */
+  --sidebar-bg: #121212;
+  --content-bg: #18181b;
+  
+  --color-text-primary: #ededed;
+  --color-text-secondary: #d4d4d8;
+  --color-text-tertiary: #71717a;
 
-  /* Point Colors - Blue (unified with light) */
+  /* Point Colors - Sophisticated Blue */
   --color-accent: #3b82f6;
   --color-accent-secondary: #60a5fa;
   
-  --color-accent-subtle: rgba(59, 130, 246, 0.15);
-  --color-accent-hover: rgba(59, 130, 246, 0.1);
+  --color-accent-subtle: rgba(59, 130, 246, 0.1);
+  --color-accent-hover: rgba(59, 130, 246, 0.08);
 
-  /* Background Layers - Softer */
-  --color-bg-primary: #171a21;
-  --color-bg-secondary: #22262f;
-  --color-bg-tertiary: #2d323d;
+  /* Background Layers - Matte */
+  --color-bg-primary: #0f0f10;
+  --color-bg-secondary: #18181b;
+  --color-bg-tertiary: #27272a;
   
-  --color-border: rgba(255,255,255,0.08);
-  --color-border-hover: rgba(255,255,255,0.15);
+  --color-border: rgba(255,255,255,0.06);
+  --color-border-hover: rgba(255,255,255,0.12);
 
-  /* Shadows */
-  --shadow-sm: 0 1px 3px rgba(0,0,0,0.2);
-  --shadow-card: 0 4px 20px rgba(0,0,0,0.2);
+  /* Shadows - Subtle Ambient */
+  --shadow-sm: 0 1px 2px rgba(0,0,0,0.3);
+  --shadow-card: 0 8px 32px rgba(0,0,0,0.2);
   
   /* Typography */
   --font-display: 'Playfair Display', serif;
@@ -34,35 +36,35 @@
 
   /* Aliases */
   --color-accent-primary: var(--color-accent);
+  --color-heading: var(--color-text-primary);
   --color-text: var(--color-text-primary);
   --color-subtle: var(--color-text-tertiary);
-  --color-heading: var(--color-text-primary);
 }
 
-/* Light Theme */
+/* Light Theme - Maintaining clarity */
 [data-theme="light"] {
-  --sidebar-bg: #f3f2f0;
-  --content-bg: #f9f8f6;
+  --sidebar-bg: #f9fafb;
+  --content-bg: #ffffff;
   
-  --color-text-primary: #111827;
-  --color-text-secondary: #4b5563;
-  --color-text-tertiary: #6b7280;
+  --color-text-primary: #171717;
+  --color-text-secondary: #52525b;
+  --color-text-tertiary: #a1a1aa;
 
   --color-accent: #2563eb;
   --color-accent-secondary: #3b82f6;
   
-  --color-accent-subtle: rgba(37, 99, 235, 0.1);
-  --color-accent-hover: rgba(37, 99, 235, 0.05);
+  --color-accent-subtle: rgba(37, 99, 235, 0.08);
+  --color-accent-hover: rgba(37, 99, 235, 0.04);
 
   --color-bg-primary: #ffffff;
-  --color-bg-secondary: #f9f8f6;
-  --color-bg-tertiary: #f3f2f0;
+  --color-bg-secondary: #f9fafb;
+  --color-bg-tertiary: #f3f4f6;
   
   --color-border: #e5e7eb;
-  --color-border-hover: #d1d5db;
+  --color-border-hover: #d4d4d8;
 
-  --shadow-sm: 0 1px 3px rgba(0,0,0,0.08);
-  --shadow-card: 0 4px 20px rgba(0,0,0,0.08);
+  --shadow-sm: 0 1px 2px rgba(0,0,0,0.05);
+  --shadow-card: 0 4px 20px rgba(0,0,0,0.04);
 }
 
 * {
@@ -76,7 +78,8 @@ body {
   background-color: var(--content-bg);
   color: var(--color-text-primary);
   font-family: var(--font-sans);
-  line-height: 1.6;
+  line-height: 1.75;
+  letter-spacing: 0.025em; /* Premium spacing */
 }
 
 /* --- Layout Architecture --- */
@@ -216,10 +219,22 @@ body {
   .main-content {
     margin-left: 0;
     margin-bottom: 70px;
-    padding: 1.5rem 1rem;
+    padding: 1rem 0.5rem; /* Reduced horizontal padding */
     max-width: 100%;
   }
+
+  .responsive-p-2rem {
+    padding: 1.25rem !important;
+  }
+  
+  .responsive-p-3rem {
+    padding: 1.5rem !important;
+  }
 }
+
+/* Responsive Utilities */
+.responsive-p-2rem { padding: 2rem; }
+.responsive-p-3rem { padding: 3rem; }
 
 /* --- Component Utilities --- */
 
@@ -276,4 +291,26 @@ body {
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(10px); }
   to { opacity: 1; transform: translateY(0); }
+}
+
+/* Logo Theme Switching */
+.logo-light {
+  display: block;
+}
+.logo-dark {
+  display: none;
+}
+
+:root .logo-light {
+  display: none;
+}
+:root .logo-dark {
+  display: block;
+}
+
+[data-theme="light"] .logo-light {
+  display: block;
+}
+[data-theme="light"] .logo-dark {
+  display: none;
 }

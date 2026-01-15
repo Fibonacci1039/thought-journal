@@ -1,13 +1,11 @@
-import { supabase } from "./supabase";
+import "server-only";
+import { createClient } from "./supabase/server";
 import { Entry, Topic } from "./types";
 
 // -- Entries --
 
 export async function getRandomEntry(): Promise<Entry | undefined> {
-  // PostgREST doesn't support random() natively in a simple way without extensions or RPC,
-  // but for a personal app with <10k entries, fetching IDs or using a limit/offset trick is fine.
-  // Here we'll use a simple "fetch IDs -> pick one -> fetch details" approach for simplicity/compatibility.
-
+  const supabase = await createClient();
   const { data: ids, error } = await supabase.from("entries").select("id");
 
   if (error) {
@@ -24,6 +22,7 @@ export async function getRandomEntry(): Promise<Entry | undefined> {
 }
 
 export async function getEntries(): Promise<Entry[]> {
+  const supabase = await createClient();
   const { data, error } = await supabase
     .from("entries")
     .select("*")
@@ -34,6 +33,7 @@ export async function getEntries(): Promise<Entry[]> {
 }
 
 export async function getEntry(id: string): Promise<Entry | undefined> {
+  const supabase = await createClient();
   const { data, error } = await supabase
     .from("entries")
     .select("*")
@@ -47,10 +47,18 @@ export async function getEntry(id: string): Promise<Entry | undefined> {
 export async function createEntry(
   entry: Omit<Entry, "id" | "created_at" | "updated_at">
 ): Promise<Entry> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) throw new Error("Unauthorized");
+
   const { data, error } = await supabase
     .from("entries")
     .insert([
       {
+        user_id: user.id,
         title: entry.title,
         human_view: entry.human_view,
         ai_view: entry.ai_view,
@@ -76,6 +84,7 @@ export async function updateEntry(
   id: string,
   updates: Partial<Entry>
 ): Promise<Entry> {
+  const supabase = await createClient();
   const { data, error } = await supabase
     .from("entries")
     .update({
@@ -91,6 +100,7 @@ export async function updateEntry(
 }
 
 export async function deleteEntry(id: string): Promise<void> {
+  const supabase = await createClient();
   const { error } = await supabase.from("entries").delete().eq("id", id);
 
   if (error) throw error;
@@ -99,19 +109,27 @@ export async function deleteEntry(id: string): Promise<void> {
 // -- Topics --
 
 export async function getTopics(): Promise<Topic[]> {
+  const supabase = await createClient();
   const { data, error } = await supabase
     .from("topics")
     .select("*")
-    .order("created_at", { ascending: true }); // Spec doesn't strictly specify sort, but ascending creation is standard
+    .order("created_at", { ascending: true });
 
   if (error) throw error;
   return data as Topic[];
 }
 
 export async function createTopic(name: string): Promise<Topic> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) throw new Error("Unauthorized");
+
   const { data, error } = await supabase
     .from("topics")
-    .insert([{ name }])
+    .insert([{ name, user_id: user.id }])
     .select()
     .single();
 
@@ -120,6 +138,7 @@ export async function createTopic(name: string): Promise<Topic> {
 }
 
 export async function updateTopic(id: string, name: string): Promise<Topic> {
+  const supabase = await createClient();
   const { data, error } = await supabase
     .from("topics")
     .update({ name })
@@ -132,6 +151,7 @@ export async function updateTopic(id: string, name: string): Promise<Topic> {
 }
 
 export async function deleteTopic(id: string): Promise<void> {
+  const supabase = await createClient();
   const { error } = await supabase.from("topics").delete().eq("id", id);
 
   if (error) throw error;
@@ -140,6 +160,7 @@ export async function deleteTopic(id: string): Promise<void> {
 // -- Periodic Summaries --
 
 export async function getLatestTopicSummary(topicId: string) {
+  const supabase = await createClient();
   const { data, error } = await supabase
     .from("periodic_summaries")
     .select("*")
@@ -159,6 +180,7 @@ export async function findRelatedEntries(
   threshold = 0.7,
   count = 5
 ) {
+  const supabase = await createClient();
   const { data, error } = await supabase.rpc("match_entries", {
     query_embedding: embedding,
     match_threshold: threshold,
@@ -176,11 +198,10 @@ export async function createTopicRelationship(
   targetId: string,
   relationType: string = "related"
 ) {
-  // Sort IDs to ensure unique check works regardless of direction if we want bidirectional
-  // But for now, let's treat as directed or user-defined.
-  // Actually, to prevent "A->B" and "B->A" dupes if we mean undirected, we might sort.
-  // Let's assume directed for now (Source -> Target).
-
+  const supabase = await createClient();
+  // Note: topic_relationships table may need user_id as well for RLS,
+  // or rely on referencing topics that have user_id.
+  // Assuming simple insert for now.
   const { data, error } = await supabase
     .from("topic_relationships")
     .insert([
@@ -198,6 +219,7 @@ export async function createTopicRelationship(
 }
 
 export async function getTopicRelationships() {
+  const supabase = await createClient();
   const { data, error } = await supabase
     .from("topic_relationships")
     .select("*");
@@ -207,6 +229,7 @@ export async function getTopicRelationships() {
 }
 
 export async function deleteTopicRelationship(id: string) {
+  const supabase = await createClient();
   const { error } = await supabase
     .from("topic_relationships")
     .delete()

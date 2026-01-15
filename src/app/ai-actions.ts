@@ -1,7 +1,6 @@
 "use server";
 
 import { getEntries } from "@/lib/storage";
-import { supabase } from "@/lib/supabase";
 import { revalidatePath } from "next/cache";
 import { checkUsageLimit, recordUsage } from "@/lib/usage";
 
@@ -50,14 +49,22 @@ export async function generatePromptAction(topicId: string, topicName: string) {
     // A'. Fetch User Preferences for Custom Prompt
     let customInstructions = "";
     try {
-      const { data: profile } = await supabase
-        .from("user_profiles")
-        .select("preferences")
-        .eq("user_id", "default_user")
-        .single();
-      const prefs = profile?.preferences as Record<string, string> | null;
-      if (prefs?.topicAnalysisPrompt) {
-        customInstructions = `\n\nCustom Instructions from User: ${prefs.topicAnalysisPrompt}`;
+      const { createClient } = await import("@/lib/supabase/server");
+      const supabase = await createClient();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      if (user) {
+        const { data: profile } = await supabase
+          .from("user_profiles")
+          .select("preferences")
+          .eq("user_id", user.id)
+          .single();
+        const prefs = profile?.preferences as Record<string, string> | null;
+        if (prefs?.topicAnalysisPrompt) {
+          customInstructions = `\n\nCustom Instructions from User: ${prefs.topicAnalysisPrompt}`;
+        }
       }
     } catch {
       // Ignore error
@@ -102,7 +109,7 @@ ${ANALYSIS_SCHEMA}
     await recordUsage("topic_analysis", { topicId, topicName });
 
     return { success: true, prompt, usage };
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error("Generate Prompt Error:", e);
     return { success: false, error: "プロンプト生成に失敗しました" };
   }
@@ -126,7 +133,7 @@ export async function saveAnalysisResultAction(
     let aiKnowledge;
     try {
       aiKnowledge = JSON.parse(cleanedJson);
-    } catch (e) {
+    } catch (_e) {
       return {
         success: false,
         error:
@@ -135,6 +142,9 @@ export async function saveAnalysisResultAction(
     }
 
     // B. Save to Database
+    const { createClient } = await import("@/lib/supabase/server");
+    const supabase = await createClient();
+
     const now = new Date();
     // Use fixed "all-time" range logic for now
     const periodEnd = now.toISOString();
@@ -151,7 +161,7 @@ export async function saveAnalysisResultAction(
 
     revalidatePath(`/topics/${topicId}`);
     return { success: true };
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error("Save Analysis Error:", e);
     return { success: false, error: "データの保存に失敗しました" };
   }
@@ -235,7 +245,7 @@ ${WEEKLY_ANALYSIS_SCHEMA}
     await recordUsage("weekly_review");
 
     return { success: true, prompt, usage };
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error("Generate Weekly Prompt Error:", e);
     return { success: false, error: "プロンプト生成に失敗しました" };
   }
@@ -263,7 +273,7 @@ export async function saveWeeklySummaryAction(jsonString: string) {
     let aiKnowledge;
     try {
       aiKnowledge = JSON.parse(cleanedJson);
-    } catch (e) {
+    } catch (_e) {
       return {
         success: false,
         error:
@@ -271,7 +281,14 @@ export async function saveWeeklySummaryAction(jsonString: string) {
       };
     }
 
+    const { createClient } = await import("@/lib/supabase/server");
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
     // 1. Find or Create "Weekly Review" Topic
+    // Note: RLS will only show user's topics
     const { data: topics } = await supabase
       .from("topics")
       .select("*")
@@ -281,9 +298,12 @@ export async function saveWeeklySummaryAction(jsonString: string) {
     if (topics && topics.length > 0) {
       topicId = topics[0].id;
     } else {
+      // Must include user_id if RLS requires it, assuming table structure
+      if (!user) throw new Error("Unauthorized");
+
       const { data: newTopic, error } = await supabase
         .from("topics")
-        .insert({ name: "Weekly Review" })
+        .insert({ name: "Weekly Review", user_id: user.id })
         .select()
         .single();
       if (error) throw error;
@@ -297,6 +317,8 @@ export async function saveWeeklySummaryAction(jsonString: string) {
     // Format dates as YYYY-MM-DD for DATE column
     const toDateString = (d: Date) => d.toISOString().split("T")[0];
 
+    // Note: periodic_summaries might need user_id depending on RLS,
+    // but schema didn't include it. Assuming it relies on topic ownership.
     const { error } = await supabase.from("periodic_summaries").insert({
       topic_id: topicId,
       period_start: toDateString(oneWeekAgo),
@@ -357,14 +379,22 @@ export async function autoAnalyzeTopicAction(
     // A'. Fetch User Preferences for Custom Prompt
     let customInstructions = "";
     try {
-      const { data: profile } = await supabase
-        .from("user_profiles")
-        .select("preferences")
-        .eq("user_id", "default_user")
-        .single();
-      const prefs = profile?.preferences as Record<string, string> | null;
-      if (prefs?.topicAnalysisPrompt) {
-        customInstructions = `\n\nCustom Instructions from User: ${prefs.topicAnalysisPrompt}`;
+      const { createClient } = await import("@/lib/supabase/server");
+      const supabase = await createClient();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      if (user) {
+        const { data: profile } = await supabase
+          .from("user_profiles")
+          .select("preferences")
+          .eq("user_id", user.id)
+          .single();
+        const prefs = profile?.preferences as Record<string, string> | null;
+        if (prefs?.topicAnalysisPrompt) {
+          customInstructions = `\n\nCustom Instructions from User: ${prefs.topicAnalysisPrompt}`;
+        }
       }
     } catch {
       // Ignore error
@@ -460,6 +490,9 @@ ${ANALYSIS_SCHEMA}
     }
 
     // 6. Save to Database
+    const { createClient } = await import("@/lib/supabase/server");
+    const supabase = await createClient();
+
     const now = new Date();
     const { error: dbError } = await supabase
       .from("periodic_summaries")
@@ -603,6 +636,12 @@ ${WEEKLY_ANALYSIS_SCHEMA}
     }
 
     // 5. Find or Create "Weekly Review" Topic
+    const { createClient } = await import("@/lib/supabase/server");
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
     const { data: topics } = await supabase
       .from("topics")
       .select("*")
@@ -612,9 +651,10 @@ ${WEEKLY_ANALYSIS_SCHEMA}
     if (topics && topics.length > 0) {
       topicId = topics[0].id;
     } else {
+      if (!user) throw new Error("Unauthorized");
       const { data: newTopic, error } = await supabase
         .from("topics")
-        .insert({ name: "Weekly Review" })
+        .insert({ name: "Weekly Review", user_id: user.id })
         .select()
         .single();
       if (error) throw error;

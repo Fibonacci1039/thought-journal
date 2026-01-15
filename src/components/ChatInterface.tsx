@@ -7,12 +7,13 @@ import {
   Loader2,
   BookOpen,
   Sparkles,
-  MessageCircle,
   Brain,
   Heart,
   Lightbulb,
   Clock,
 } from "lucide-react";
+
+type Source = { title?: string };
 import { chatWithPastAction } from "@/app/actions";
 import { checkUsageLimit } from "@/lib/usage";
 import { UsageCheckResult } from "@/lib/usage-types";
@@ -45,7 +46,7 @@ const SAMPLE_QUESTIONS = [
 
 export function ChatInterface() {
   const [messages, setMessages] = useState<
-    { role: "user" | "bot"; text: string; sources?: any[] }[]
+    { role: "user" | "bot"; text: string; sources?: Source[] }[]
   >([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -141,6 +142,7 @@ export function ChatInterface() {
         {/* Welcome State - Show when no messages */}
         {isNewConversation && (
           <div
+            className="responsive-p-2rem"
             style={{
               display: "flex",
               flexDirection: "column",
@@ -148,7 +150,6 @@ export function ChatInterface() {
               justifyContent: "center",
               height: "100%",
               textAlign: "center",
-              padding: "2rem",
             }}
           >
             {/* AI Avatar */}
@@ -327,7 +328,7 @@ export function ChatInterface() {
                       flexWrap: "wrap",
                     }}
                   >
-                    {msg.sources.map((s: any, idx) => (
+                    {msg.sources.map((s: Source, idx) => (
                       <div
                         key={idx}
                         style={{

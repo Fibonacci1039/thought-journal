@@ -17,10 +17,13 @@ type Props = {
   topicName: string;
   latestSummary?: {
     human_summary: string;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- AI-generated JSON has dynamic schema
     ai_knowledge: any;
     created_at: string;
   };
 };
+
+type Trend = { period?: string; label?: string };
 
 type Mode = "IDLE" | "PROMPT_READY" | "INPUT_RESULT";
 
@@ -109,7 +112,7 @@ export function TopicAnalysisSection({
       } else {
         alert(res.error || "保存に失敗しました");
       }
-    } catch (e) {
+    } catch {
       alert("エラーが発生しました");
     } finally {
       setLoading(false);
@@ -230,7 +233,7 @@ export function TopicAnalysisSection({
                     color: "#d2691e",
                   }}
                 >
-                  🚀 Next Week's Focus
+                  🚀 Next Week&apos;s Focus
                 </div>
                 <div>{data.action_item || "-"}</div>
               </div>
@@ -348,7 +351,7 @@ export function TopicAnalysisSection({
               観測された傾向
             </h3>
             <ul style={{ paddingLeft: "1.2rem", margin: 0, lineHeight: 1.8 }}>
-              {data.trends.map((t: any, i: number) => (
+              {(data.trends as Trend[]).map((t: Trend, i: number) => (
                 <li key={i}>
                   <span
                     style={{
