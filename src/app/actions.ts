@@ -597,7 +597,10 @@ export async function getUserProfileAction() {
     }
 
     // Return empty profile object if none exists, instead of null error
-    return { success: true, data: data || null };
+    const ADMIN_EMAILS = ["yuitofibo@fuji.waseda.jp"];
+    const isPro = user?.email && ADMIN_EMAILS.includes(user.email);
+
+    return { success: true, data: { ...(data || {}), is_pro: isPro } };
   } catch (e: unknown) {
     console.error("Get User Profile Error:", e);
     return { success: false, error: (e as Error).message };

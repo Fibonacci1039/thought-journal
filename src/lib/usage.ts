@@ -48,6 +48,22 @@ export async function checkUsageLimit(
     };
   }
 
+  // Admin User Bypass
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  const ADMIN_EMAILS = ["yuitofibo@fuji.waseda.jp"];
+  if (user?.email && ADMIN_EMAILS.includes(user.email)) {
+    return {
+      allowed: true,
+      used: 0,
+      limit: 9999,
+      remaining: 9999,
+    };
+  }
+
   const used = await getMonthlyUsage(feature);
   const limit = USAGE_LIMITS[feature];
   const remaining = Math.max(0, limit - used);

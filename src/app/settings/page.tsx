@@ -18,6 +18,8 @@ export default function SettingsPage() {
   const [currentConcerns, setCurrentConcerns] = useState("");
   const [isSavingProfile, setIsSavingProfile] = useState(false);
   const [profileStatus, setProfileStatus] = useState("");
+  const [isPro, setIsPro] = useState(false);
+
   // Pro prompt customization
   const [recallPrompt, setRecallPrompt] = useState("");
   const [topicPrompt, setTopicPrompt] = useState("");
@@ -30,6 +32,9 @@ export default function SettingsPage() {
       if (res.success && res.data) {
         setBasicInfo(res.data.basic_info || "");
         setCurrentConcerns(res.data.current_concerns || "");
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        setIsPro((res.data as any).is_pro || false);
+
         // Load custom prompts from preferences
         const prefs = res.data.preferences || {};
         setRecallPrompt(prefs.recallPrompt || "");
@@ -293,17 +298,19 @@ export default function SettingsPage() {
 
         <button
           onClick={handleUpgrade}
-          disabled={isUpgrading}
+          disabled={isUpgrading || isPro}
           style={{
             width: "100%",
             padding: "0.75rem",
-            background: "linear-gradient(135deg, #fb923c, #f59e0b)",
-            color: "#fff",
-            border: "none",
+            background: isPro
+              ? "var(--color-bg-secondary)"
+              : "linear-gradient(135deg, #fb923c, #f59e0b)",
+            color: isPro ? "var(--color-text-secondary)" : "#fff",
+            border: isPro ? "1px solid var(--color-border)" : "none",
             borderRadius: "8px",
             fontSize: "1rem",
             fontWeight: 600,
-            cursor: isUpgrading ? "not-allowed" : "pointer",
+            cursor: isUpgrading || isPro ? "default" : "pointer",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
@@ -311,7 +318,12 @@ export default function SettingsPage() {
             opacity: isUpgrading ? 0.7 : 1,
           }}
         >
-          {isUpgrading ? (
+          {isPro ? (
+            <>
+              <Check size={18} style={{ color: "#10b981" }} />
+              現在のプラン (Pro / Admin)
+            </>
+          ) : isUpgrading ? (
             <>
               <Loader2 className="animate-spin" size={18} />
               処理中...
@@ -491,6 +503,7 @@ export default function SettingsPage() {
                 padding: "0.15rem 0.5rem",
                 borderRadius: "12px",
                 fontWeight: 600,
+                marginLeft: "0.5rem",
               }}
             >
               Pro
@@ -621,6 +634,79 @@ export default function SettingsPage() {
             </p>
           </div>
         )}
+      </section>
+
+      {/* Memory Sync Section */}
+      <section
+        style={{
+          marginTop: "2rem",
+          padding: "1.5rem",
+          borderRadius: "16px",
+          border: "1px solid var(--color-border)",
+          background: "var(--color-bg-secondary)",
+        }}
+      >
+        <h2 style={{ fontSize: "1.1rem", marginBottom: "1rem" }}>
+          データベース連携
+        </h2>
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            gap: "0.5rem",
+            marginBottom: "1rem",
+          }}
+        >
+          <div
+            style={{ fontSize: "0.9rem", color: "var(--color-text-secondary)" }}
+          >
+            AI検索用のインデックスを更新します。
+          </div>
+          {status && (
+            <div style={{ fontSize: "0.85rem", color: "#a855f7" }}>
+              {status}
+            </div>
+          )}
+          {progress > 0 && (
+            <div
+              style={{
+                width: "100%",
+                height: "4px",
+                background: "var(--color-border)",
+                borderRadius: "2px",
+                overflow: "hidden",
+                marginTop: "0.5rem",
+              }}
+            >
+              <div
+                style={{
+                  width: `${progress}%`,
+                  height: "100%",
+                  background: "#a855f7",
+                  transition: "width 0.3s ease",
+                }}
+              />
+            </div>
+          )}
+        </div>
+        <button
+          onClick={handleSyncMemories}
+          disabled={isSyncing}
+          className="btn-secondary"
+          style={{
+            width: "100%",
+            display: "flex",
+            justifyContent: "center",
+            gap: "0.5rem",
+          }}
+        >
+          {isSyncing ? (
+            <Loader2 className="animate-spin" size={18} />
+          ) : (
+            <Sparkles size={18} />
+          )}
+          {isSyncing ? "同期中..." : "記録を同期する"}
+        </button>
       </section>
     </div>
   );
