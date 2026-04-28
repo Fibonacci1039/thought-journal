@@ -39,7 +39,10 @@ export async function checkUsageLimit(
   feature: FeatureType
 ): Promise<UsageCheckResult> {
   // Developer Mode Bypass
-  if (process.env.NEXT_PUBLIC_IS_DEV_MODE === "true") {
+  if (
+    process.env.NEXT_PUBLIC_IS_DEV_MODE === "true" ||
+    process.env.NEXT_PUBLIC_DISABLE_AUTH === "true"
+  ) {
     return {
       allowed: true,
       used: 0,
@@ -84,6 +87,8 @@ export async function recordUsage(
   feature: FeatureType,
   metadata: Record<string, unknown> = {}
 ): Promise<void> {
+  if (process.env.NEXT_PUBLIC_DISABLE_AUTH === "true") return;
+
   const supabase = await createClient();
   const {
     data: { user },

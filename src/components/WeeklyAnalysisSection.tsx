@@ -114,9 +114,8 @@ export function WeeklyAnalysisSection({ initialData }: Props) {
       }
 
       // 3. Try parsing
-      let _parsed;
       try {
-        _parsed = JSON.parse(jsonString);
+        JSON.parse(jsonString);
       } catch {
         // If strict parse fails, it might be due to loose formatting.
         // For now, let's just create a valid object if we can't parse, or throw.
@@ -461,7 +460,7 @@ export function WeeklyAnalysisSection({ initialData }: Props) {
                   height: "100px", // Compact view
                   padding: "0.8rem",
                   fontSize: "0.8rem",
-                  fontFamily: "monospace",
+                  fontFamily: "var(--font-sans)",
                   color: "var(--color-text-primary)",
                   border: "1px solid var(--color-border)",
                   borderRadius: "8px",
@@ -504,7 +503,7 @@ export function WeeklyAnalysisSection({ initialData }: Props) {
                   fontSize: "0.9rem",
                   color: "var(--color-text-primary)",
                   backgroundColor: "#1c1c1e",
-                  fontFamily: "monospace",
+                  fontFamily: "var(--font-sans)",
                   border: "1px solid var(--color-border)",
                   borderRadius: "8px",
                   resize: "vertical",

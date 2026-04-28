@@ -6,7 +6,7 @@ import { Topic } from "@/lib/types";
 import { createEntryAction } from "@/app/actions";
 import { uploadImage } from "@/lib/client-storage";
 import { ImageUploader } from "@/components/ImageUploader";
-import { Book, Film, Palette, Globe, MoreHorizontal } from "lucide-react";
+import { Book, Film, Palette, Globe, MoreHorizontal, Save } from "lucide-react";
 import { TagInput } from "./TagInput";
 
 type SourceType = "book" | "movie" | "art" | "web" | "other";
@@ -77,6 +77,7 @@ export function QuoteForm({ topics }: Props) {
       const result = await createEntryAction({
         title: sourceTitle || "引用",
         human_view: myNote || quoteText,
+        entry_type: "quote",
         ai_view: { schema_version: "2.0", ...quoteData },
         topic_ids: selectedTopicIds,
         tags: tags.length > 0 ? tags : undefined,
@@ -100,40 +101,36 @@ export function QuoteForm({ topics }: Props) {
 
   const inputStyle = {
     width: "100%",
-    padding: "0.75rem",
+    padding: "0.85rem 0.95rem",
     fontSize: "1rem",
-    background: "var(--color-bg-primary)",
+    background: "var(--color-surface)",
     color: "var(--color-text-primary)",
     border: "1px solid var(--color-border)",
-    borderRadius: "8px",
+    borderRadius: "var(--radius-md)",
   };
 
   const labelStyle = {
     display: "block",
     marginBottom: "0.5rem",
-    fontSize: "0.85rem",
-    color: "var(--color-text-tertiary)",
-    fontWeight: 500 as const,
+    fontSize: "0.875rem",
+    color: "var(--color-text-secondary)",
+    fontWeight: 700 as const,
   };
 
   return (
-    <form onSubmit={handleSubmit}>
+    <form className="quote-form-shell" onSubmit={handleSubmit}>
       {/* Source Type */}
-      <div style={{ marginBottom: "1.5rem" }}>
+      <section className="quote-form-card">
         <label style={labelStyle}>ソースの種類</label>
-        <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
+        <div className="quote-source-type-grid">
           {SOURCE_TYPES.map((st) => (
             <button
+              className="quote-source-button"
               key={st.value}
               type="button"
               onClick={() => setSourceType(st.value)}
+              aria-pressed={sourceType === st.value}
               style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "0.4rem",
-                padding: "0.5rem 0.75rem",
-                fontSize: "0.85rem",
-                borderRadius: "8px",
                 border:
                   sourceType === st.value
                     ? "1px solid var(--color-accent)"
@@ -146,106 +143,92 @@ export function QuoteForm({ topics }: Props) {
                   sourceType === st.value
                     ? "var(--color-accent)"
                     : "var(--color-text-secondary)",
-                cursor: "pointer",
               }}
             >
               {st.icon} {st.label}
             </button>
           ))}
         </div>
-      </div>
+      </section>
 
-      {/* Source Title */}
-      <div style={{ marginBottom: "1.5rem" }}>
-        <label style={labelStyle}>
-          {sourceType === "book"
-            ? "本のタイトル"
-            : sourceType === "movie"
-            ? "映画のタイトル"
-            : sourceType === "art"
-            ? "展示名 / 美術館名"
-            : "ソース名"}
-        </label>
-        <input
-          type="text"
-          value={sourceTitle}
-          onChange={(e) => setSourceTitle(e.target.value)}
-          placeholder="例: 嫌われる勇気"
-          style={inputStyle}
-        />
-      </div>
+      <section className="quote-form-card">
+        <div className="quote-form-grid">
+          <div>
+            <label style={labelStyle}>
+              {sourceType === "book"
+                ? "本のタイトル"
+                : sourceType === "movie"
+                ? "映画のタイトル"
+                : sourceType === "art"
+                ? "展示名 / 美術館名"
+                : "ソース名"}
+            </label>
+            <input
+              type="text"
+              value={sourceTitle}
+              onChange={(e) => setSourceTitle(e.target.value)}
+              placeholder="例: 嫌われる勇気"
+              style={inputStyle}
+            />
+          </div>
+          <div>
+            <label style={labelStyle}>
+              {sourceType === "book"
+                ? "著者"
+                : sourceType === "movie"
+                ? "監督"
+                : "作者 / クリエイター"}
+              <span style={{ fontWeight: 400 }}> (任意)</span>
+            </label>
+            <input
+              type="text"
+              value={sourceAuthor}
+              onChange={(e) => setSourceAuthor(e.target.value)}
+              placeholder="例: 岸見一郎"
+              style={inputStyle}
+            />
+          </div>
+        </div>
 
-      {/* Author (optional) */}
-      <div style={{ marginBottom: "1.5rem" }}>
-        <label style={labelStyle}>
-          {sourceType === "book"
-            ? "著者"
-            : sourceType === "movie"
-            ? "監督"
-            : "作者 / クリエイター"}
-          <span
-            style={{ fontWeight: 400, color: "var(--color-text-tertiary)" }}
-          >
-            {" "}
-            (任意)
-          </span>
-        </label>
-        <input
-          type="text"
-          value={sourceAuthor}
-          onChange={(e) => setSourceAuthor(e.target.value)}
-          placeholder="例: 岸見一郎"
-          style={inputStyle}
-        />
-      </div>
-
-      {/* Page (for books) */}
-      {sourceType === "book" && (
-        <div style={{ marginBottom: "1.5rem" }}>
+        <div className="quote-form-grid compact">
+          {sourceType === "book" && (
+            <div>
+              <label style={labelStyle}>
+                ページ
+                <span style={{ fontWeight: 400 }}> (任意)</span>
+              </label>
+              <input
+                type="text"
+                value={page}
+                onChange={(e) => setPage(e.target.value)}
+                placeholder="例: 42"
+                style={inputStyle}
+              />
+            </div>
+          )}
+          <div>
           <label style={labelStyle}>
-            ページ
-            <span
-              style={{ fontWeight: 400, color: "var(--color-text-tertiary)" }}
-            >
-              {" "}
-              (任意)
-            </span>
+            URL
+            <span style={{ fontWeight: 400 }}> (任意)</span>
           </label>
           <input
-            type="text"
-            value={page}
-            onChange={(e) => setPage(e.target.value)}
-            placeholder="例: 42"
-            style={{ ...inputStyle, width: "120px" }}
+            type="url"
+            value={sourceUrl}
+            onChange={(e) => setSourceUrl(e.target.value)}
+            placeholder="https://..."
+            style={inputStyle}
           />
+          </div>
         </div>
-      )}
-
-      {/* URL (optional) */}
-      <div style={{ marginBottom: "1.5rem" }}>
-        <label style={labelStyle}>
-          URL
-          <span
-            style={{ fontWeight: 400, color: "var(--color-text-tertiary)" }}
-          >
-            {" "}
-            (任意)
-          </span>
-        </label>
-        <input
-          type="url"
-          value={sourceUrl}
-          onChange={(e) => setSourceUrl(e.target.value)}
-          placeholder="https://..."
-          style={inputStyle}
-        />
-      </div>
+      </section>
 
       {/* Images */}
-      <ImageUploader images={newImages} onImagesChange={setNewImages} />
+      <section className="quote-form-card">
+        <ImageUploader images={newImages} onImagesChange={setNewImages} />
+      </section>
 
       {/* Quote Text */}
-      <div style={{ marginBottom: "1.5rem" }}>
+      <section className="quote-form-card quote-main-card">
         <label style={labelStyle}>
           引用テキスト
           <span
@@ -259,13 +242,13 @@ export function QuoteForm({ topics }: Props) {
           value={quoteText}
           onChange={(e) => setQuoteText(e.target.value)}
           placeholder="心に残った言葉や文章..."
-          rows={4}
-          style={{ ...inputStyle, resize: "vertical" }}
+          rows={6}
+          style={{ ...inputStyle, resize: "vertical", lineHeight: 1.8 }}
         />
-      </div>
+      </section>
 
       {/* My Note */}
-      <div style={{ marginBottom: "1.5rem" }}>
+      <section className="quote-form-card">
         <label style={labelStyle}>
           自分のメモ・感想
           <span
@@ -282,11 +265,11 @@ export function QuoteForm({ topics }: Props) {
           rows={3}
           style={{ ...inputStyle, resize: "vertical" }}
         />
-      </div>
+      </section>
 
       {/* Topics */}
       {topics.length > 0 && (
-        <div style={{ marginBottom: "2rem" }}>
+        <section className="quote-form-card">
           <label style={labelStyle}>トピック</label>
           <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
             {topics.map((topic) => {
@@ -310,7 +293,7 @@ export function QuoteForm({ topics }: Props) {
                       ? "1px solid var(--color-accent-secondary)"
                       : "1px solid var(--color-border)",
                     background: selected
-                      ? "rgba(159, 209, 57, 0.15)"
+                      ? "var(--color-accent-subtle)"
                       : "transparent",
                     color: selected
                       ? "var(--color-accent-secondary)"
@@ -323,18 +306,18 @@ export function QuoteForm({ topics }: Props) {
               );
             })}
           </div>
-        </div>
+        </section>
       )}
 
       {/* Tags */}
-      <div style={{ marginBottom: "2rem" }}>
+      <section className="quote-form-card">
         <label style={labelStyle}>タグ</label>
         <TagInput
           tags={tags}
           onChange={setTags}
           placeholder="タグを入力... (Enter で追加)"
         />
-      </div>
+      </section>
 
       {/* Submit */}
       <button
@@ -345,8 +328,10 @@ export function QuoteForm({ topics }: Props) {
           width: "100%",
           opacity: loading || (!quoteText.trim() && !myNote.trim()) ? 0.5 : 1,
           cursor: loading ? "wait" : "pointer",
+          minHeight: "48px",
         }}
       >
+        <Save size={17} />
         {loading ? "保存中..." : "保存"}
       </button>
     </form>

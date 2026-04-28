@@ -17,19 +17,20 @@ import { ThemeToggle } from "./ThemeToggle";
 import { createBrowserClient } from "@/lib/supabase/client";
 
 const NAV_ITEMS = [
-  { label: "タイムライン", href: "/", icon: <BookOpen size={18} /> },
-  { label: "記録", href: "/new", icon: <PenLine size={18} /> },
+  { label: "今日", href: "/", icon: <BookOpen size={18} /> },
+  { label: "記録する", href: "/new", icon: <PenLine size={18} /> },
   { label: "引用", href: "/quote", icon: <Quote size={18} /> },
   { label: "週次レビュー", href: "/weekly", icon: <Inbox size={18} /> },
-  { label: "トピック", href: "/topics", icon: <Hash size={18} /> },
+  { label: "トピック", href: "/topics", icon: <Hash size={18} />, hideOnMobile: true },
   { label: "Personal AI", href: "/personal-ai", icon: <Sparkles size={18} /> },
-  { label: "設定", href: "/settings", icon: <Settings size={18} /> },
+  { label: "設定", href: "/settings", icon: <Settings size={18} />, hideOnMobile: true },
 ];
 
 export function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
   const supabase = createBrowserClient();
+  const authDisabled = process.env.NEXT_PUBLIC_DISABLE_AUTH === "true";
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -43,12 +44,12 @@ export function Sidebar() {
       <div className="sidebar-header">
         <h1
           className="sidebar-title"
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: "0rem",
-            textDecoration: "none",
-          }}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "0.625rem",
+              textDecoration: "none",
+            }}
         >
           {/* Mind OS Logo - Light mode */}
           <Image
@@ -75,10 +76,10 @@ export function Sidebar() {
           {/* Brand Name */}
           <span
             style={{
-              fontFamily: "var(--font-inter)",
-              fontSize: "1.1rem",
+              fontFamily: "var(--font-sans)",
+              fontSize: "1rem",
               fontWeight: 600,
-              letterSpacing: "0.05em",
+              letterSpacing: 0,
               color: "var(--color-text-primary)",
             }}
           >
@@ -92,7 +93,7 @@ export function Sidebar() {
             marginTop: "0.25rem",
           }}
         >
-          思考を整理する
+          思考の記録と回復
         </p>
       </div>
 
@@ -104,7 +105,9 @@ export function Sidebar() {
             <Link
               key={item.href}
               href={item.href}
-              className={`nav-item ${isActive ? "active" : ""}`}
+              className={`nav-item ${isActive ? "active" : ""} ${
+                item.hideOnMobile ? "mobile-hidden" : ""
+              }`}
             >
               <span className={`nav-icon ${isActive ? "text-accent" : ""}`}>
                 {item.icon}
@@ -116,16 +119,7 @@ export function Sidebar() {
       </nav>
 
       {/* Footer with Theme Toggle & Logout */}
-      <div
-        style={{
-          marginTop: "auto",
-          paddingTop: "1rem",
-          borderTop: "1px solid var(--color-border)",
-          display: "flex",
-          flexDirection: "column",
-          gap: "0.5rem",
-        }}
-      >
+      <div className="sidebar-footer">
         <div
           style={{
             display: "flex",
@@ -144,24 +138,26 @@ export function Sidebar() {
           <ThemeToggle />
         </div>
 
-        <button
-          onClick={handleLogout}
-          className="nav-item"
-          style={{
-            width: "100%",
-            border: "none",
-            background: "transparent",
-            cursor: "pointer",
-            color: "var(--color-text-secondary)",
-            justifyContent: "flex-start",
-            paddingLeft: "0.75rem",
-          }}
-        >
-          <span className="nav-icon">
-            <LogOut size={18} />
-          </span>
-          <span className="nav-label">ログアウト</span>
-        </button>
+        {!authDisabled && (
+          <button
+            onClick={handleLogout}
+            className="nav-item"
+            style={{
+              width: "100%",
+              border: "none",
+              background: "transparent",
+              cursor: "pointer",
+              color: "var(--color-text-secondary)",
+              justifyContent: "flex-start",
+              paddingLeft: "0.75rem",
+            }}
+          >
+            <span className="nav-icon">
+              <LogOut size={18} />
+            </span>
+            <span className="nav-label">ログアウト</span>
+          </button>
+        )}
       </div>
     </aside>
   );

@@ -8,6 +8,13 @@ export type SubscriptionStatus = {
 export async function getSubscriptionStatus(): Promise<SubscriptionStatus> {
   let isPro = process.env.NEXT_PUBLIC_IS_PRO === "true";
 
+  if (process.env.NEXT_PUBLIC_DISABLE_AUTH === "true") {
+    return {
+      isPro,
+      plan: isPro ? "pro" : "free",
+    };
+  }
+
   try {
     const supabase = await createClient();
     const {

@@ -1,60 +1,45 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
-  Send,
-  User,
-  Loader2,
   BookOpen,
-  Sparkles,
   Brain,
+  Check,
+  Clock,
   Heart,
   Lightbulb,
-  Clock,
+  Loader2,
+  Save,
+  Send,
+  Sparkles,
+  User,
 } from "lucide-react";
-
-type Source = { title?: string };
-import { chatWithPastAction } from "@/app/actions";
+import { chatWithPastAction, createEntryFromChatAction } from "@/app/actions";
 import { checkUsageLimit } from "@/lib/usage";
 import { UsageCheckResult } from "@/lib/usage-types";
-import { UsageLimitModal } from "./UsageLimitModal";
 import { UsageIndicator } from "./UsageIndicator";
+import { UsageLimitModal } from "./UsageLimitModal";
 
-// サンプル質問（短めのテキストでモバイル表示を最適化）
+type Source = { id?: string; title?: string; created_at?: string };
+type Message = { role: "user" | "bot"; text: string; sources?: Source[] };
+
 const SAMPLE_QUESTIONS = [
-  {
-    icon: <Brain size={16} />,
-    text: "最近の悩みは？",
-    color: "#8b5cf6",
-  },
-  {
-    icon: <Heart size={16} />,
-    text: "嬉しかった出来事",
-    color: "#ec4899",
-  },
-  {
-    icon: <Lightbulb size={16} />,
-    text: "良いアイデア",
-    color: "#f59e0b",
-  },
-  {
-    icon: <Clock size={16} />,
-    text: "1ヶ月前の自分",
-    color: "#10b981",
-  },
+  { icon: <Brain size={16} />, text: "最近の悩みを整理したい" },
+  { icon: <Heart size={16} />, text: "今の気持ちを言葉にしたい" },
+  { icon: <Lightbulb size={16} />, text: "繰り返している悩みは？" },
+  { icon: <Clock size={16} />, text: "次に書く問いを出して" },
 ];
 
 export function ChatInterface() {
-  const [messages, setMessages] = useState<
-    { role: "user" | "bot"; text: string; sources?: Source[] }[]
-  >([]);
+  const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
-  const scrollRef = useRef<HTMLDivElement>(null);
+  const [savingIndex, setSavingIndex] = useState<number | null>(null);
+  const [savedIndexes, setSavedIndexes] = useState<Set<number>>(new Set());
   const [usage, setUsage] = useState<UsageCheckResult | null>(null);
   const [showLimitModal, setShowLimitModal] = useState(false);
+  const scrollRef = useRef<HTMLDivElement>(null);
 
-  // Fetch usage on mount
   useEffect(() => {
     checkUsageLimit("rag_chat").then(setUsage);
   }, []);
@@ -63,7 +48,7 @@ export function ChatInterface() {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
-  }, [messages]);
+  }, [messages, loading]);
 
   const handleSend = async (messageText?: string) => {
     const textToSend = messageText || input;
@@ -84,15 +69,11 @@ export function ChatInterface() {
             sources: result.data.sources,
           },
         ]);
-        // Update usage from response
-        if (result.usage) {
-          setUsage(result.usage);
-        }
+        if (result.usage) setUsage(result.usage);
       } else if (result.error === "USAGE_LIMIT_EXCEEDED") {
-        // Show limit modal and remove the user message
         if (result.usage) setUsage(result.usage);
         setShowLimitModal(true);
-        setMessages((prev) => prev.slice(0, -1)); // Remove last user message
+        setMessages((prev) => prev.slice(0, -1));
       } else {
         setMessages((prev) => [
           ...prev,
@@ -100,7 +81,7 @@ export function ChatInterface() {
             role: "bot",
             text:
               result.error ||
-              "すみません、うまく思い出せませんでした。（エラー詳細はコンソールを確認してください）",
+              "すみません、うまく思い出せませんでした。もう一度聞いてください。",
           },
         ]);
       }
@@ -115,6 +96,43 @@ export function ChatInterface() {
     }
   };
 
+  const findQuestionForBotMessage = (botIndex: number) => {
+    for (let i = botIndex - 1; i >= 0; i--) {
+      if (messages[i]?.role === "user") return messages[i].text;
+    }
+    return "";
+  };
+
+  const handleSaveDialogue = async (botIndex: number) => {
+    const botMessage = messages[botIndex];
+    if (!botMessage || botMessage.role !== "bot" || savingIndex !== null) {
+      return;
+    }
+
+    const question = findQuestionForBotMessage(botIndex);
+    if (!question) return;
+
+    setSavingIndex(botIndex);
+    try {
+      const result = await createEntryFromChatAction({
+        question,
+        response: botMessage.text,
+        sources: botMessage.sources,
+      });
+
+      if (result.success) {
+        setSavedIndexes((prev) => new Set(prev).add(botIndex));
+      } else {
+        alert(result.error || "保存に失敗しました");
+      }
+    } catch {
+      alert("保存に失敗しました");
+    } finally {
+      setSavingIndex(null);
+    }
+  };
+
+  const disabled = loading || (usage?.remaining ?? 1) <= 0;
   const isNewConversation = messages.length === 0;
 
   return (
@@ -123,11 +141,10 @@ export function ChatInterface() {
         display: "flex",
         flexDirection: "column",
         height: "100%",
-        maxWidth: "800px",
+        maxWidth: "820px",
         margin: "0 auto",
       }}
     >
-      {/* Messages Area */}
       <div
         ref={scrollRef}
         style={{
@@ -139,7 +156,6 @@ export function ChatInterface() {
           gap: "1rem",
         }}
       >
-        {/* Welcome State - Show when no messages */}
         {isNewConversation && (
           <div
             className="responsive-p-2rem"
@@ -148,39 +164,34 @@ export function ChatInterface() {
               flexDirection: "column",
               alignItems: "center",
               justifyContent: "center",
-              height: "100%",
+              minHeight: "100%",
               textAlign: "center",
             }}
           >
-            {/* AI Avatar */}
             <div
               style={{
                 width: 80,
                 height: 80,
                 borderRadius: "50%",
-                background: "linear-gradient(135deg, #8b5cf6, #ec4899)",
+                background: "var(--color-accent)",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
                 marginBottom: "1.5rem",
-                boxShadow: "0 8px 32px rgba(139, 92, 246, 0.3)",
               }}
             >
-              <Sparkles size={36} color="#fff" />
+              <Sparkles size={36} color="#07121c" />
             </div>
 
             <h2
               style={{
                 fontSize: "1.5rem",
-                fontWeight: 600,
+                fontWeight: 700,
                 marginBottom: "0.5rem",
-                background: "linear-gradient(135deg, #8b5cf6, #ec4899)",
-                WebkitBackgroundClip: "text",
-                WebkitTextFillColor: "transparent",
-                backgroundClip: "text",
+                color: "var(--color-text-primary)",
               }}
             >
-              パーソナルAI
+              Personal AI
             </h2>
 
             <p
@@ -188,90 +199,73 @@ export function ChatInterface() {
                 color: "var(--color-text-tertiary)",
                 fontSize: "0.9rem",
                 marginBottom: "2rem",
-                maxWidth: "280px",
+                maxWidth: "340px",
                 lineHeight: 1.7,
-                wordBreak: "keep-all",
-                overflowWrap: "break-word",
               }}
             >
-              過去の記録をもとに思考整理をお手伝いします
+              対話で悩みをほどき、必要な気づきを記録として蓄積します。
             </p>
 
-            {/* Sample Questions */}
             <div
               style={{
                 display: "flex",
                 flexWrap: "wrap",
                 gap: "0.75rem",
                 justifyContent: "center",
-                maxWidth: "500px",
+                maxWidth: "560px",
               }}
             >
-              {SAMPLE_QUESTIONS.map((q, i) => (
+              {SAMPLE_QUESTIONS.map((question, index) => (
                 <button
-                  key={i}
-                  onClick={() => handleSend(q.text)}
-                  disabled={loading || (usage?.remaining ?? 1) <= 0}
+                  key={index}
+                  onClick={() => handleSend(question.text)}
+                  disabled={disabled}
                   style={{
                     display: "flex",
                     alignItems: "center",
                     gap: "0.5rem",
                     padding: "0.75rem 1rem",
-                    background: `${q.color}15`,
-                    border: `1px solid ${q.color}30`,
-                    borderRadius: "24px",
-                    color: q.color,
+                    background: "var(--color-accent-subtle)",
+                    border: "1px solid var(--color-border-hover)",
+                    borderRadius: "999px",
+                    color: "var(--color-accent)",
                     fontSize: "0.9rem",
-                    cursor:
-                      loading || (usage?.remaining ?? 1) <= 0
-                        ? "not-allowed"
-                        : "pointer",
-                    transition: "all 0.2s",
-                    opacity: loading || (usage?.remaining ?? 1) <= 0 ? 0.5 : 1,
-                  }}
-                  onMouseEnter={(e) => {
-                    if (!loading && (usage?.remaining ?? 1) > 0) {
-                      e.currentTarget.style.background = `${q.color}25`;
-                      e.currentTarget.style.transform = "translateY(-2px)";
-                    }
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.background = `${q.color}15`;
-                    e.currentTarget.style.transform = "none";
+                    cursor: disabled ? "not-allowed" : "pointer",
+                    opacity: disabled ? 0.5 : 1,
                   }}
                 >
-                  {q.icon}
-                  {q.text}
+                  {question.icon}
+                  {question.text}
                 </button>
               ))}
             </div>
           </div>
         )}
 
-        {/* Chat Messages */}
-        {messages.map((msg, i) => (
+        {messages.map((message, index) => (
           <div
-            key={i}
+            key={index}
             style={{
               display: "flex",
-              justifyContent: msg.role === "user" ? "flex-end" : "flex-start",
+              justifyContent:
+                message.role === "user" ? "flex-end" : "flex-start",
               gap: "0.75rem",
             }}
           >
-            {msg.role === "bot" && (
+            {message.role === "bot" && (
               <div
                 style={{
                   width: 36,
                   height: 36,
                   borderRadius: "50%",
-                  background: "linear-gradient(135deg, #8b5cf6, #ec4899)",
+                  background: "var(--color-accent)",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
                   flexShrink: 0,
                 }}
               >
-                <Sparkles size={18} color="#fff" />
+                <Sparkles size={18} color="#07121c" />
               </div>
             )}
 
@@ -281,32 +275,33 @@ export function ChatInterface() {
                   padding: "1rem 1.25rem",
                   borderRadius: "20px",
                   background:
-                    msg.role === "user"
-                      ? "linear-gradient(135deg, var(--color-accent), #f59e0b)"
+                    message.role === "user"
+                      ? "var(--color-accent)"
                       : "var(--color-bg-secondary)",
                   color:
-                    msg.role === "user" ? "#fff" : "var(--color-text-primary)",
+                    message.role === "user"
+                      ? "#07121c"
+                      : "var(--color-text-primary)",
                   lineHeight: 1.7,
-                  borderTopLeftRadius: msg.role === "bot" ? "6px" : "20px",
-                  borderTopRightRadius: msg.role === "user" ? "6px" : "20px",
-                  boxShadow:
-                    msg.role === "user"
-                      ? "0 4px 15px rgba(251, 146, 60, 0.2)"
-                      : "0 2px 8px rgba(0,0,0,0.05)",
+                  borderTopLeftRadius:
+                    message.role === "bot" ? "6px" : "20px",
+                  borderTopRightRadius:
+                    message.role === "user" ? "6px" : "20px",
+                  border: "1px solid var(--color-border)",
                 }}
               >
-                {msg.text}
+                {message.text}
               </div>
 
-              {/* Sources Citation */}
-              {msg.sources && msg.sources.length > 0 && (
+              {message.sources && message.sources.length > 0 && (
                 <div
                   style={{
                     marginTop: "0.75rem",
                     padding: "0.75rem",
                     background: "var(--color-bg-tertiary)",
-                    borderRadius: "12px",
+                    borderRadius: "var(--radius-md)",
                     fontSize: "0.8rem",
+                    border: "1px solid var(--color-border)",
                   }}
                 >
                   <div
@@ -321,16 +316,10 @@ export function ChatInterface() {
                     <BookOpen size={14} />
                     <span>参照した記録</span>
                   </div>
-                  <div
-                    style={{
-                      display: "flex",
-                      gap: "8px",
-                      flexWrap: "wrap",
-                    }}
-                  >
-                    {msg.sources.map((s: Source, idx) => (
+                  <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+                    {message.sources.map((source, sourceIndex) => (
                       <div
-                        key={idx}
+                        key={sourceIndex}
                         style={{
                           background: "var(--color-bg-primary)",
                           padding: "6px 10px",
@@ -343,15 +332,52 @@ export function ChatInterface() {
                           border: "1px solid var(--color-border)",
                         }}
                       >
-                        {s.title || "無題の記録"}
+                        {source.title || "無題の記録"}
                       </div>
                     ))}
                   </div>
                 </div>
               )}
+
+              {message.role === "bot" && (
+                <button
+                  onClick={() => handleSaveDialogue(index)}
+                  disabled={savingIndex !== null || savedIndexes.has(index)}
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: "0.375rem",
+                    marginTop: "0.75rem",
+                    border: "1px solid var(--color-border)",
+                    background: savedIndexes.has(index)
+                      ? "var(--color-accent-subtle)"
+                      : "transparent",
+                    color: savedIndexes.has(index)
+                      ? "var(--color-accent)"
+                      : "var(--color-text-tertiary)",
+                    borderRadius: "var(--radius-md)",
+                    padding: "0.45rem 0.7rem",
+                    fontSize: "0.78rem",
+                    fontWeight: 700,
+                    cursor:
+                      savingIndex !== null || savedIndexes.has(index)
+                        ? "default"
+                        : "pointer",
+                  }}
+                >
+                  {savedIndexes.has(index) ? (
+                    <Check size={14} />
+                  ) : savingIndex === index ? (
+                    <Loader2 size={14} className="animate-spin" />
+                  ) : (
+                    <Save size={14} />
+                  )}
+                  {savedIndexes.has(index) ? "記録済み" : "この対話を記録"}
+                </button>
+              )}
             </div>
 
-            {msg.role === "user" && (
+            {message.role === "user" && (
               <div
                 style={{
                   width: 36,
@@ -372,21 +398,19 @@ export function ChatInterface() {
         ))}
 
         {loading && (
-          <div
-            style={{ display: "flex", gap: "0.75rem", alignItems: "center" }}
-          >
+          <div style={{ display: "flex", gap: "0.75rem", alignItems: "center" }}>
             <div
               style={{
                 width: 36,
                 height: 36,
                 borderRadius: "50%",
-                background: "linear-gradient(135deg, #8b5cf6, #ec4899)",
+                background: "var(--color-accent)",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
               }}
             >
-              <Sparkles size={18} color="#fff" />
+              <Sparkles size={18} color="#07121c" />
             </div>
             <div
               style={{
@@ -406,9 +430,7 @@ export function ChatInterface() {
         )}
       </div>
 
-      {/* Input Area */}
       <div style={{ padding: "1rem 1.5rem 1.5rem" }}>
-        {/* Usage Indicator */}
         <div
           style={{
             display: "flex",
@@ -426,7 +448,6 @@ export function ChatInterface() {
             borderRadius: "28px",
             padding: "6px",
             border: "1px solid var(--color-border)",
-            boxShadow: "0 4px 20px rgba(0,0,0,0.08)",
           }}
         >
           <input
@@ -439,7 +460,7 @@ export function ChatInterface() {
             placeholder={
               (usage?.remaining ?? 1) <= 0
                 ? "今月の利用上限に達しました"
-                : "過去の自分に聞いてみよう..."
+                : "今の悩みや考えを話す..."
             }
             disabled={(usage?.remaining ?? 1) <= 0}
             style={{
@@ -454,36 +475,27 @@ export function ChatInterface() {
           />
           <button
             onClick={() => handleSend()}
-            disabled={loading || (usage?.remaining ?? 1) <= 0 || !input.trim()}
+            disabled={disabled || !input.trim()}
             style={{
               width: 44,
               height: 44,
               borderRadius: "50%",
               background:
-                loading || (usage?.remaining ?? 1) <= 0 || !input.trim()
+                disabled || !input.trim()
                   ? "var(--color-bg-tertiary)"
-                  : "linear-gradient(135deg, var(--color-accent), #f59e0b)",
+                  : "var(--color-accent)",
               border: "none",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              cursor:
-                loading || (usage?.remaining ?? 1) <= 0 || !input.trim()
-                  ? "not-allowed"
-                  : "pointer",
-              transition: "all 0.2s",
-              boxShadow:
-                loading || (usage?.remaining ?? 1) <= 0 || !input.trim()
-                  ? "none"
-                  : "0 4px 15px rgba(251, 146, 60, 0.3)",
+              cursor: disabled || !input.trim() ? "not-allowed" : "pointer",
             }}
           >
-            <Send size={18} color="#fff" />
+            <Send size={18} color="#07121c" />
           </button>
         </div>
       </div>
 
-      {/* Usage Limit Modal */}
       {usage && (
         <UsageLimitModal
           isOpen={showLimitModal}

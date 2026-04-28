@@ -6,6 +6,10 @@ export async function updateSession(request: NextRequest) {
     request,
   });
 
+  if (process.env.NEXT_PUBLIC_DISABLE_AUTH === "true") {
+    return supabaseResponse;
+  }
+
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 

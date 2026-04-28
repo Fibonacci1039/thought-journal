@@ -38,14 +38,24 @@ const BASE_SYSTEM_PROMPT = `あなたは私専属の「思考整理パートナ�
 以下のJSON形式で、コードブロックとして出力すること。
 \`\`\`json
 {
-  "schema_version": "2.0",
+  "schema_version": "2.1",
+  "type": "guided_journaling",
   "topic": "トピック名（会話から判断）",
   "ai_view": {
     "facts": ["客観的な事実"],
     "thoughts": ["私の思考・考え"],
     "emotions": ["感情・体の感覚"],
     "values": ["大切にしている価値観"],
+    "concerns": ["悩み・不安・引っかかり"],
+    "relief_factors": ["少し負荷を下げる要因・安心材料"],
+    "next_actions": ["次に取れる小さな行動"],
     "questions_for_future": ["今後問いかけるべき問い"]
+  },
+  "reflection_assets": {
+    "core_concern": "今回いちばん軽くしたい悩み",
+    "emotional_pattern": "繰り返し出ている感情の流れ",
+    "small_next_step": "24時間以内にできる小さな一歩",
+    "next_review_question": "未来の自分に問い直す質問"
   }
 }
 \`\`\`

@@ -4,6 +4,15 @@ import { getEntries } from "@/lib/storage";
 import { revalidatePath } from "next/cache";
 import { checkUsageLimit, recordUsage } from "@/lib/usage";
 
+const localPreviewEnabled = () =>
+  process.env.NEXT_PUBLIC_DISABLE_AUTH === "true";
+
+const localPreviewError = {
+  success: false,
+  error:
+    "ローカルプレビュー中は保存できません。Supabase接続後に再度実行してください。",
+} as const;
+
 // 1. Define Output Schema (for Prompt Engineering)
 const ANALYSIS_SCHEMA = `
 {
@@ -49,6 +58,8 @@ export async function generatePromptAction(topicId: string, topicName: string) {
     // A'. Fetch User Preferences for Custom Prompt
     let customInstructions = "";
     try {
+      if (localPreviewEnabled()) throw new Error("Skip profile in preview");
+
       const { createClient } = await import("@/lib/supabase/server");
       const supabase = await createClient();
       const {
@@ -123,6 +134,8 @@ export async function saveAnalysisResultAction(
   jsonString: string
 ) {
   try {
+    if (localPreviewEnabled()) return localPreviewError;
+
     // A. Validate JSON
     // Clean up potential Markdown code blocks if user copied them
     const cleanedJson = jsonString
@@ -133,7 +146,7 @@ export async function saveAnalysisResultAction(
     let aiKnowledge;
     try {
       aiKnowledge = JSON.parse(cleanedJson);
-    } catch (_e) {
+    } catch {
       return {
         success: false,
         error:
@@ -267,6 +280,8 @@ ${WEEKLY_ANALYSIS_SCHEMA}
  */
 export async function saveWeeklySummaryAction(jsonString: string) {
   try {
+    if (localPreviewEnabled()) return localPreviewError;
+
     // Robust JSON extraction
     let cleanedJson = jsonString;
     const codeBlockMatch = jsonString.match(/```json\n([\s\S]*?)\n```/);
@@ -283,7 +298,7 @@ export async function saveWeeklySummaryAction(jsonString: string) {
     let aiKnowledge;
     try {
       aiKnowledge = JSON.parse(cleanedJson);
-    } catch (_e) {
+    } catch {
       return {
         success: false,
         error:
@@ -369,6 +384,14 @@ export async function autoAnalyzeTopicAction(
   topicName: string
 ) {
   try {
+    if (localPreviewEnabled()) {
+      return {
+        success: false,
+        error:
+          "ローカルプレビュー中は自動分析を実行できません。プロンプト生成を使ってください。",
+      };
+    }
+
     // 1. Check usage limit
     const usage = await checkUsageLimit("topic_analysis");
     if (!usage.allowed) {
@@ -555,7 +578,7 @@ ${ANALYSIS_SCHEMA}
     await recordUsage("topic_analysis", { topicId, topicName, auto: true });
 
     revalidatePath(`/topics/${topicId}`);
-    return { success: true, data: aiKnowledge, usage };
+    return { success: true, data: aiKnowledge, usage, provider: usedProvider };
   } catch (e: unknown) {
     console.error("Auto Analyze Error:", e);
     const errorMessage = e instanceof Error ? e.message : "分析に失敗しました";
@@ -569,6 +592,14 @@ ${ANALYSIS_SCHEMA}
  */
 export async function autoWeeklyAnalysisAction() {
   try {
+    if (localPreviewEnabled()) {
+      return {
+        success: false,
+        error:
+          "ローカルプレビュー中は自動分析を実行できません。プロンプト生成を使ってください。",
+      };
+    }
+
     // 1. Check usage limit
     const usage = await checkUsageLimit("weekly_review");
     if (!usage.allowed) {

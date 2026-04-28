@@ -82,7 +82,6 @@ export default function SettingsPage() {
     setProgress(0);
 
     try {
-      let processedCount = 0;
       let totalProcessed = 0;
 
       // Loop batch processing
@@ -97,7 +96,6 @@ export default function SettingsPage() {
 
         for (const entry of entries) {
           await generateEntryEmbeddingAction(entry.id, entry.human_view);
-          processedCount++;
         }
 
         totalProcessed += entries.length;

@@ -13,15 +13,19 @@ export default async function WeeklyPage() {
     (e) => new Date(e.created_at) >= oneWeekAgo
   ).length;
 
-  const supabase = await createClient();
+  let latestSummary = null;
+  if (process.env.NEXT_PUBLIC_DISABLE_AUTH !== "true") {
+    const supabase = await createClient();
 
-  // Fetch existing weekly summary if any
-  const { data: latestSummary } = await supabase
-    .from("periodic_summaries")
-    .select("*")
-    .order("created_at", { ascending: false })
-    .limit(1)
-    .single();
+    // Fetch existing weekly summary if any
+    const { data } = await supabase
+      .from("periodic_summaries")
+      .select("*")
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .single();
+    latestSummary = data;
+  }
 
   let initialData = null;
   if (latestSummary) {

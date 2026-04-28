@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { Entry, Topic } from "@/lib/types";
 import { deleteEntryAction } from "@/app/actions";
@@ -219,12 +220,12 @@ export function EntryDetailView({ entry, topics }: Props) {
                     aspectRatio: "16/9",
                   }}
                 >
-                  <img
+                  <Image
                     src={url}
                     alt={`${entry.title || "Entry"} image ${idx + 1}`}
+                    fill
+                    sizes="(max-width: 768px) 100vw, 200px"
                     style={{
-                      width: "100%",
-                      height: "100%",
                       objectFit: "cover",
                     }}
                   />

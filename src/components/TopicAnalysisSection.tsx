@@ -513,7 +513,7 @@ export function TopicAnalysisSection({
                 borderRadius: "4px",
                 border: "1px solid var(--color-border)",
                 marginBottom: "1rem",
-                fontFamily: "monospace",
+                fontFamily: "var(--font-sans)",
                 background: "var(--color-bg-primary)",
                 color: "var(--color-text-primary)",
               }}
@@ -575,7 +575,7 @@ export function TopicAnalysisSection({
                 borderRadius: "4px",
                 border: "1px solid var(--color-border)",
                 marginBottom: "1rem",
-                fontFamily: "monospace",
+                fontFamily: "var(--font-sans)",
                 background: "var(--color-bg-primary)",
                 color: "var(--color-text-primary)",
               }}

@@ -49,12 +49,12 @@ const ENTRY_TYPE_CONFIG: Record<
   quick_memo: {
     label: "メモ",
     icon: <Zap size={12} />,
-    color: "var(--color-text-tertiary)",
+    color: "var(--color-accent)",
   },
   quote: {
     label: "引用",
     icon: <Quote size={12} />,
-    color: "#a78bfa",
+    color: "var(--color-accent-secondary)",
   },
   idea: {
     label: "アイデア",
@@ -165,23 +165,42 @@ export function EntryList({
 
   return (
     <div>
-      {/* Filter Buttons */}
       <div
         style={{
           display: "flex",
-          gap: "0.5rem",
-          marginBottom: "1.5rem",
-          flexWrap: "wrap",
+          alignItems: "flex-end",
+          justifyContent: "space-between",
+          marginBottom: "0.875rem",
         }}
       >
+        <h2
+          style={{
+            margin: 0,
+            fontSize: "1.25rem",
+            lineHeight: 1.3,
+          }}
+        >
+          タイムライン
+        </h2>
+        <span
+          style={{
+            color: "var(--color-text-tertiary)",
+            fontSize: "0.75rem",
+          }}
+        >
+          最新順
+        </span>
+      </div>
+
+      {/* Filter Buttons */}
+      <div className="timeline-filter-group">
         {FILTER_OPTIONS.map((opt) => (
           <button
+            className="timeline-filter-button"
             key={opt.value}
             onClick={() => setFilter(opt.value)}
+            aria-pressed={filter === opt.value}
             style={{
-              padding: "0.4rem 0.8rem",
-              fontSize: "0.85rem",
-              borderRadius: "16px",
               border:
                 filter === opt.value
                   ? "1px solid var(--color-accent)"
@@ -194,8 +213,6 @@ export function EntryList({
                 filter === opt.value
                   ? "var(--color-accent)"
                   : "var(--color-text-secondary)",
-              cursor: "pointer",
-              transition: "all 0.2s ease",
             }}
           >
             {opt.label}
@@ -224,42 +241,42 @@ export function EntryList({
             タグ:
           </span>
           <button
+            className="timeline-tag-button"
             onClick={() => setTagFilter(null)}
+            aria-pressed={!tagFilter}
             style={{
-              padding: "0.3rem 0.6rem",
-              fontSize: "0.8rem",
-              borderRadius: "12px",
               border: !tagFilter
-                ? "1px solid #a78bfa"
+                ? "1px solid var(--color-accent)"
                 : "1px solid var(--color-border)",
               background: !tagFilter
-                ? "rgba(167, 139, 250, 0.15)"
+                ? "var(--color-accent-subtle)"
                 : "transparent",
-              color: !tagFilter ? "#a78bfa" : "var(--color-text-tertiary)",
-              cursor: "pointer",
+              color: !tagFilter
+                ? "var(--color-accent)"
+                : "var(--color-text-tertiary)",
             }}
           >
             すべて
           </button>
           {allTags.map((tag) => (
             <button
+              className="timeline-tag-button"
               key={tag}
               onClick={() => setTagFilter(tag)}
+              aria-pressed={tagFilter === tag}
               style={{
-                padding: "0.3rem 0.6rem",
-                fontSize: "0.8rem",
-                borderRadius: "12px",
                 border:
                   tagFilter === tag
-                    ? "1px solid #a78bfa"
+                    ? "1px solid var(--color-accent)"
                     : "1px solid var(--color-border)",
                 background:
                   tagFilter === tag
-                    ? "rgba(167, 139, 250, 0.15)"
+                    ? "var(--color-accent-subtle)"
                     : "transparent",
                 color:
-                  tagFilter === tag ? "#a78bfa" : "var(--color-text-tertiary)",
-                cursor: "pointer",
+                  tagFilter === tag
+                    ? "var(--color-accent)"
+                    : "var(--color-text-tertiary)",
               }}
             >
               #{tag}
@@ -358,14 +375,14 @@ export function EntryList({
                           display: "flex",
                           alignItems: "center",
                           gap: "0.6rem",
-                          padding: "0.5rem 0.8rem",
+                          padding: "0.55rem 0",
                           cursor: "pointer",
                           borderRadius: "8px",
                           transition: "background 0.2s",
                         }}
                         onMouseEnter={(e) =>
                           (e.currentTarget.style.background =
-                            "rgba(255,255,255,0.03)")
+                            "rgba(255,255,255,0.045)")
                         }
                         onMouseLeave={(e) =>
                           (e.currentTarget.style.background = "transparent")
@@ -495,8 +512,8 @@ export function EntryList({
                                   onClick={(e) => e.stopPropagation()}
                                   style={{
                                     fontSize: "0.7rem",
-                                    color: "#10b981",
-                                    background: "rgba(16, 185, 129, 0.1)",
+                                    color: "#07121c",
+                                    background: "var(--color-accent)",
                                     padding: "2px 8px",
                                     borderRadius: "10px",
                                     textDecoration: "none",

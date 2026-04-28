@@ -3,7 +3,11 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Entry, Topic } from "@/lib/types";
-import { createEntryAction, updateEntryAction } from "@/app/actions";
+import {
+  createEntryAction,
+  enrichEntryAiViewAction,
+  updateEntryAction,
+} from "@/app/actions";
 
 import { uploadImage } from "@/lib/client-storage";
 import { ImageUploader } from "@/components/ImageUploader";
@@ -23,21 +27,43 @@ type Props = {
   topics: Topic[];
   initialData?: Entry;
   presetPrompt?: string;
+  initialTitle?: string;
+  initialNarrative?: string;
+  initialAiView?: Record<string, unknown>;
 };
 
 // Default AI View structure
 const DEFAULT_AI_VIEW = {
-  schema_version: "1.0",
+  schema_version: "2.1",
+  type: "journal",
+  reflection_assets: {
+    concerns: [],
+    emotions: [],
+    values: [],
+    next_actions: [],
+    questions_for_future: [],
+  },
 };
 
-export function EntryForm({ topics, initialData, presetPrompt }: Props) {
+export function EntryForm({
+  topics,
+  initialData,
+  presetPrompt,
+  initialTitle,
+  initialNarrative,
+  initialAiView,
+}: Props) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [showRitual, setShowRitual] = useState(false);
 
   // Minimalist Form State
-  const [title, setTitle] = useState(initialData?.title || "");
-  const [narrative, setNarrative] = useState(initialData?.human_view || "");
+  const [title, setTitle] = useState(
+    initialData?.title || initialTitle || ""
+  );
+  const [narrative, setNarrative] = useState(
+    initialData?.human_view || initialNarrative || ""
+  );
   const [selectedTopicIds, setSelectedTopicIds] = useState<string[]>(
     initialData?.topic_ids || []
   );
@@ -119,6 +145,8 @@ export function EntryForm({ topics, initialData, presetPrompt }: Props) {
   const [aiJsonInput, setAiJsonInput] = useState(
     initialData?.ai_view && Object.keys(initialData.ai_view).length > 1
       ? JSON.stringify(initialData.ai_view, null, 2)
+      : initialAiView
+      ? JSON.stringify(initialAiView, null, 2)
       : ""
   );
 
@@ -187,6 +215,10 @@ export function EntryForm({ topics, initialData, presetPrompt }: Props) {
       if (!res.success) {
         const errorMsg = (res as { success: false; error: string }).error;
         throw new Error(errorMsg);
+      }
+
+      if ("data" in res && res.data?.id) {
+        void enrichEntryAiViewAction(res.data.id);
       }
 
       // Instead of alert/push immediate, trigger ritual
@@ -450,7 +482,7 @@ export function EntryForm({ topics, initialData, presetPrompt }: Props) {
               marginTop: "0.5rem",
               padding: "0.5rem",
               fontSize: "0.8rem",
-              fontFamily: "monospace",
+              fontFamily: "var(--font-sans)",
               backgroundColor: "#333", // Light Gray (relative to dark theme)
               color: "#fff",
               border: "1px solid var(--color-border)",

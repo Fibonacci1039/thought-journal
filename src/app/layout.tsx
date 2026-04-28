@@ -1,17 +1,6 @@
 import type { Metadata } from "next";
-import { Inter, Playfair_Display } from "next/font/google";
 import "./globals.css";
 import { Sidebar } from "@/components/Sidebar";
-
-const inter = Inter({
-  variable: "--font-inter",
-  subsets: ["latin"],
-});
-
-const playfair = Playfair_Display({
-  variable: "--font-playfair",
-  subsets: ["latin"],
-});
 
 export const metadata: Metadata = {
   metadataBase: new URL(
@@ -53,7 +42,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="ja">
-      <body className={`${inter.variable} ${playfair.variable}`}>
+      <body>
         <div className="app-layout">
           <Sidebar />
           <div className="main-content">{children}</div>

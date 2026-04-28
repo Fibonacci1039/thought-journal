@@ -1,0 +1,602 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Mind OS redesign comp</title>
+    <style>
+      :root {
+        --ink: #161718;
+        --panel: #202123;
+        --panel-2: #292a2c;
+        --line: rgba(255, 255, 255, 0.09);
+        --text: #f3f0ea;
+        --muted: #aaa49a;
+        --quiet: #6f766e;
+        --paper: #e8dfcf;
+        --sage: #6da7d8;
+        --blue: #6da7d8;
+        --amber: #ffc247;
+        --rose: #c07d73;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        background: var(--ink);
+        color: var(--text);
+        font-family:
+          -apple-system, BlinkMacSystemFont, "Segoe UI",
+          "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+        letter-spacing: 0;
+      }
+
+      .frame {
+        width: 1440px;
+        height: 1000px;
+        display: grid;
+        grid-template-columns: 252px 1fr 340px;
+        background:
+          linear-gradient(90deg, #121313 0 252px, transparent 252px),
+          radial-gradient(circle at 78% 16%, rgba(109, 167, 216, 0.12), transparent 280px),
+          var(--ink);
+        overflow: hidden;
+      }
+
+      aside {
+        border-right: 1px solid var(--line);
+        padding: 30px 16px;
+        display: flex;
+        flex-direction: column;
+        gap: 32px;
+      }
+
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 0 10px;
+      }
+
+      .mark {
+        width: 32px;
+        height: 32px;
+        border: 1px solid rgba(232, 223, 207, 0.42);
+        border-radius: 50%;
+        display: grid;
+        place-items: center;
+        color: var(--paper);
+        font-family: Georgia, serif;
+      }
+
+      .brand b {
+        display: block;
+        font-size: 16px;
+      }
+
+      .brand span {
+        display: block;
+        margin-top: 2px;
+        color: var(--quiet);
+        font-size: 12px;
+      }
+
+      nav {
+        display: grid;
+        gap: 6px;
+      }
+
+      .nav-item {
+        height: 42px;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 0 12px;
+        color: #bdb7ac;
+        font-size: 14px;
+      }
+
+      .nav-item.active {
+        background: rgba(109, 167, 216, 0.15);
+        color: var(--sage);
+      }
+
+      .nav-icon {
+        width: 18px;
+        height: 18px;
+        border: 1.5px solid currentColor;
+        border-radius: 5px;
+        opacity: 0.85;
+      }
+
+      .aside-footer {
+        margin-top: auto;
+        border-top: 1px solid var(--line);
+        padding: 18px 10px 0;
+        color: var(--quiet);
+        font-size: 12px;
+      }
+
+      main {
+        padding: 44px 48px 72px;
+        overflow: hidden;
+      }
+
+      .topbar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 30px;
+      }
+
+      .date {
+        color: var(--muted);
+        font-size: 14px;
+      }
+
+      .actions {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+
+      .icon-button,
+      .primary {
+        border: 1px solid var(--line);
+        background: rgba(255, 255, 255, 0.04);
+        color: var(--text);
+        border-radius: 8px;
+        height: 38px;
+        padding: 0 14px;
+        font-weight: 600;
+      }
+
+      .primary {
+        background: var(--sage);
+        color: #07130c;
+        border-color: transparent;
+      }
+
+      h1 {
+        font-family: Georgia, "Hiragino Mincho ProN", serif;
+        font-size: 34px;
+        line-height: 1.15;
+        margin: 0 0 8px;
+        font-weight: 700;
+      }
+
+      .lead {
+        color: var(--muted);
+        margin: 0 0 20px;
+        font-size: 14px;
+      }
+
+      .capture {
+        background: linear-gradient(180deg, #2d2e2f, #242526);
+        border: 1px solid rgba(109, 167, 216, 0.26);
+        border-radius: 8px;
+        padding: 20px;
+        box-shadow: 0 24px 70px rgba(0, 0, 0, 0.22);
+        margin-bottom: 24px;
+      }
+
+      .capture-label {
+        color: var(--sage);
+        font-size: 12px;
+        font-weight: 700;
+        margin-bottom: 10px;
+      }
+
+      .textarea {
+        min-height: 112px;
+        color: #efeae2;
+        font-size: 18px;
+        line-height: 1.7;
+      }
+
+      .capture-bottom {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        border-top: 1px solid var(--line);
+        padding-top: 14px;
+        color: var(--muted);
+        font-size: 13px;
+      }
+
+      .save-action {
+        color: #07130c;
+        background: var(--sage);
+        padding: 8px 14px;
+        border-radius: 8px;
+      }
+
+      .chips {
+        display: flex;
+        gap: 8px;
+      }
+
+      .chip {
+        border: 1px solid var(--line);
+        background: rgba(255, 255, 255, 0.03);
+        color: var(--muted);
+        padding: 7px 11px;
+        border-radius: 999px;
+        font-size: 13px;
+      }
+
+      .summary {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 12px;
+        margin-bottom: 28px;
+      }
+
+      .metric {
+        border: 1px solid var(--line);
+        background: rgba(255, 255, 255, 0.035);
+        border-radius: 8px;
+        padding: 14px 16px;
+      }
+
+      .metric b {
+        display: block;
+        font-size: 24px;
+        margin-bottom: 2px;
+      }
+
+      .metric span {
+        color: var(--muted);
+        font-size: 12px;
+      }
+
+      .section-head {
+        display: flex;
+        justify-content: space-between;
+        align-items: end;
+        margin: 4px 0 14px;
+      }
+
+      .section-head h2 {
+        margin: 0;
+        font-size: 17px;
+      }
+
+      .section-head span {
+        color: var(--muted);
+        font-size: 12px;
+      }
+
+      .timeline {
+        position: relative;
+        padding-left: 28px;
+      }
+
+      .timeline::before {
+        content: "";
+        position: absolute;
+        top: 4px;
+        bottom: 0;
+        left: 7px;
+        width: 1px;
+        background: var(--line);
+      }
+
+      .entry {
+        position: relative;
+        border-bottom: 1px solid var(--line);
+        padding: 0 0 18px;
+        margin-bottom: 18px;
+      }
+
+      .entry::before {
+        content: "";
+        position: absolute;
+        left: -26px;
+        top: 6px;
+        width: 11px;
+        height: 11px;
+        border-radius: 50%;
+        background: var(--sage);
+        box-shadow: 0 0 0 4px var(--ink);
+      }
+
+      .entry .meta {
+        color: var(--muted);
+        font-size: 12px;
+        margin-bottom: 6px;
+      }
+
+      .entry h3 {
+        margin: 0 0 7px;
+        font-size: 16px;
+      }
+
+      .entry p {
+        margin: 0;
+        color: #cfc8bc;
+        line-height: 1.7;
+        font-size: 14px;
+      }
+
+      .tag-row {
+        display: flex;
+        gap: 7px;
+        margin-top: 10px;
+      }
+
+      .tag {
+        color: #1d241f;
+        background: var(--sage);
+        border-radius: 999px;
+        padding: 4px 8px;
+        font-size: 11px;
+        font-weight: 700;
+      }
+
+      .rail {
+        border-left: 1px solid var(--line);
+        padding: 44px 28px;
+        background: rgba(0, 0, 0, 0.1);
+      }
+
+      .rail-card {
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        padding: 18px;
+        background: rgba(255, 255, 255, 0.035);
+        margin-bottom: 14px;
+      }
+
+      .rail-title {
+        color: var(--muted);
+        font-size: 12px;
+        font-weight: 700;
+        margin-bottom: 12px;
+      }
+
+      .focus-word {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        border-bottom: 1px solid var(--line);
+        padding: 10px 0;
+        color: #ded7cc;
+        font-size: 14px;
+      }
+
+      .bar {
+        width: 90px;
+        height: 6px;
+        background: rgba(255, 255, 255, 0.07);
+        border-radius: 999px;
+        overflow: hidden;
+      }
+
+      .bar i {
+        display: block;
+        height: 100%;
+        background: var(--sage);
+        border-radius: inherit;
+      }
+
+      .quote {
+        color: #ddd5c7;
+        font-family: Georgia, "Hiragino Mincho ProN", serif;
+        font-size: 18px;
+        line-height: 1.55;
+      }
+
+      .calendar {
+        display: grid;
+        grid-template-columns: repeat(7, 1fr);
+        gap: 6px;
+      }
+
+      .day {
+        aspect-ratio: 1;
+        border-radius: 5px;
+        background: rgba(255, 255, 255, 0.05);
+      }
+
+      .day.hot {
+        background: var(--paper);
+      }
+
+      .day.mid {
+        background: var(--sage);
+      }
+
+      .mobile-nav {
+        display: none;
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        height: 74px;
+        grid-template-columns: repeat(5, 1fr);
+        border-top: 1px solid var(--line);
+        background: rgba(27, 28, 29, 0.96);
+        padding: 8px;
+      }
+
+      .mobile-nav div {
+        display: grid;
+        place-items: center;
+        color: var(--muted);
+        font-size: 10px;
+      }
+
+      .mobile-nav .on {
+        color: var(--sage);
+        background: rgba(109, 167, 216, 0.15);
+        border-radius: 8px;
+      }
+
+      @media (max-width: 800px) {
+        .frame {
+          width: 390px;
+          height: 844px;
+          display: block;
+          overflow: hidden;
+        }
+
+        aside,
+        .rail,
+        .topbar .date,
+        .actions .icon-button {
+          display: none;
+        }
+
+        main {
+          padding: 24px 18px 96px;
+        }
+
+        .topbar {
+          margin-bottom: 18px;
+          justify-content: flex-end;
+        }
+
+        h1 {
+          font-size: 30px;
+        }
+
+        .capture {
+          padding: 16px;
+        }
+
+        .textarea {
+          min-height: 132px;
+          font-size: 16px;
+        }
+
+        .summary {
+          grid-template-columns: 1fr 1fr 1fr;
+          gap: 8px;
+        }
+
+        .metric {
+          padding: 12px 10px;
+        }
+
+        .metric b {
+          font-size: 21px;
+        }
+
+        .section-head {
+          margin-top: 22px;
+        }
+
+        .mobile-nav {
+          display: grid;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="frame">
+      <aside>
+        <div class="brand">
+          <div class="mark">M</div>
+          <div>
+            <b>Mind OS</b>
+            <span>思考の記録と回復</span>
+          </div>
+        </div>
+        <nav>
+          <div class="nav-item active"><span class="nav-icon"></span>今日</div>
+          <div class="nav-item"><span class="nav-icon"></span>記録する</div>
+          <div class="nav-item"><span class="nav-icon"></span>引用</div>
+          <div class="nav-item"><span class="nav-icon"></span>週次レビュー</div>
+          <div class="nav-item"><span class="nav-icon"></span>トピック</div>
+          <div class="nav-item"><span class="nav-icon"></span>Personal AI</div>
+        </nav>
+        <div class="aside-footer">Light / Dark / System</div>
+      </aside>
+
+      <main>
+        <div class="topbar">
+          <div class="date">2026年4月28日 火曜日</div>
+          <div class="actions">
+            <button class="icon-button">検索</button>
+            <button class="primary">新規記録</button>
+          </div>
+        </div>
+
+        <h1>今日の記録</h1>
+        <p class="lead">書く、見返す、つなげる。</p>
+
+        <section class="capture">
+          <div class="capture-label">QUICK CAPTURE</div>
+          <div class="textarea">今、頭に残っていることを書く。</div>
+          <div class="capture-bottom">
+            <div class="chips">
+              <span class="chip">メモ</span>
+              <span class="chip">引用</span>
+              <span class="chip">アイデア</span>
+            </div>
+            <strong class="save-action">保存</strong>
+          </div>
+        </section>
+
+        <section class="summary">
+          <div class="metric"><b>18</b><span>今月の記録</span></div>
+          <div class="metric"><b>6</b><span>トピック</span></div>
+          <div class="metric"><b style="color: var(--amber)">4</b><span>連続記録</span></div>
+        </section>
+
+        <div class="section-head">
+          <h2>タイムライン</h2>
+          <span>最新順</span>
+        </div>
+        <section class="timeline">
+          <article class="entry">
+            <div class="meta">20:14  メモ</div>
+            <h3>進めたいことが複数あり、着手前に優先度で迷っている</h3>
+            <p>焦りの原因は作業量そのものより、次に決めるべきことが曖昧なまま残っていること。</p>
+            <div class="tag-row"><span class="tag">仕事</span><span class="tag">意思決定</span></div>
+          </article>
+          <article class="entry">
+            <div class="meta">12:42  引用</div>
+            <h3>良い記録は、未来の自分への短い引き継ぎになる</h3>
+            <p>読み返したときに「何を感じたか」と「何を試すか」が残っている状態を重視する。</p>
+            <div class="tag-row"><span class="tag">読書</span><span class="tag">習慣</span></div>
+          </article>
+        </section>
+      </main>
+
+      <section class="rail">
+        <div class="rail-card">
+          <div class="rail-title">PERSONAL AI</div>
+          <div class="quote">「今週は、完了よりも着手条件を整える記録が増えています。」</div>
+        </div>
+        <div class="rail-card">
+          <div class="rail-title">よく出るテーマ</div>
+          <div class="focus-word"><span>仕事</span><span class="bar"><i style="width: 82%"></i></span></div>
+          <div class="focus-word"><span>習慣</span><span class="bar"><i style="width: 63%"></i></span></div>
+          <div class="focus-word"><span>就活</span><span class="bar"><i style="width: 44%"></i></span></div>
+        </div>
+        <div class="rail-card">
+          <div class="rail-title">記録リズム</div>
+          <div class="calendar">
+            <span class="day"></span><span class="day hot"></span><span class="day mid"></span><span class="day"></span><span class="day hot"></span><span class="day"></span><span class="day mid"></span>
+            <span class="day mid"></span><span class="day"></span><span class="day"></span><span class="day hot"></span><span class="day mid"></span><span class="day"></span><span class="day hot"></span>
+            <span class="day"></span><span class="day mid"></span><span class="day hot"></span><span class="day"></span><span class="day"></span><span class="day mid"></span><span class="day hot"></span>
+          </div>
+        </div>
+      </section>
+    </div>
+    <div class="mobile-nav">
+      <div class="on">今日</div>
+      <div>記録</div>
+      <div>引用</div>
+      <div>週次</div>
+      <div>AI</div>
+    </div>
+  </body>
+</html>

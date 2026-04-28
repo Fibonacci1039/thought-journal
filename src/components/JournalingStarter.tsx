@@ -1,21 +1,21 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { getUserProfileAction } from "@/app/actions";
+import {
+  generateJournalingDraftAction,
+  getUserProfileAction,
+  guidedJournalingTurnAction,
+} from "@/app/actions";
 import { JOURNALING_PRESETS, JournalingPreset } from "@/lib/prompts";
 import { EntryForm } from "./EntryForm";
 import { Topic } from "@/lib/types";
 import {
-  Copy,
-  Check,
-  ExternalLink,
   Waves,
   Search,
   Scale,
   Target,
   History,
   Compass,
-  Sparkles,
   ArrowRight,
   Edit3,
 } from "lucide-react";
@@ -62,15 +62,27 @@ const PRESET_COLORS: Record<string, { bg: string; accent: string }> = {
   },
 };
 
-type Mode = "SELECT" | "PROMPT_COPIED" | "WRITE";
+type ChatMessage = { role: "user" | "assistant"; content: string };
+type DraftEntry = {
+  title?: string;
+  human_view?: string;
+  ai_view?: Record<string, unknown>;
+};
+
+type Mode = "SELECT" | "CHAT" | "WRITE";
 
 export function JournalingStarter({ topics }: Props) {
   const [selectedPreset, setSelectedPreset] = useState<JournalingPreset | null>(
     null
   );
   const [mode, setMode] = useState<Mode>("SELECT");
-  const [copied, setCopied] = useState(false);
   const [customEntryPrompt, setCustomEntryPrompt] = useState("");
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
+  const [chatInput, setChatInput] = useState("");
+  const [chatLoading, setChatLoading] = useState(false);
+  const [readyToCapture, setReadyToCapture] = useState(false);
+  const [captureReason, setCaptureReason] = useState("");
+  const [draftEntry, setDraftEntry] = useState<DraftEntry | null>(null);
 
   // Load user preferences for custom entry prompt
   useEffect(() => {
@@ -89,26 +101,89 @@ export function JournalingStarter({ topics }: Props) {
     return `${preset.systemPrompt}\n\n【追加の出力指示】\n${customEntryPrompt}`;
   };
 
-  const handleCopyPrompt = async () => {
-    if (!selectedPreset) return;
-    const fullPrompt = getFullSystemPrompt(selectedPreset);
-    await navigator.clipboard.writeText(fullPrompt);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
-
   const handleReset = () => {
     setSelectedPreset(null);
     setMode("SELECT");
-    setCopied(false);
+    setChatMessages([]);
+    setChatInput("");
+    setReadyToCapture(false);
+    setCaptureReason("");
+    setDraftEntry(null);
+  };
+
+  const startGuidedChat = async (preset: JournalingPreset) => {
+    setSelectedPreset(preset);
+    setChatMessages([
+      { role: "assistant", content: preset.starterQuestion },
+    ]);
+    setReadyToCapture(false);
+    setCaptureReason("");
+    setMode("CHAT");
+  };
+
+  const handleSendChat = async () => {
+    if (!selectedPreset || !chatInput.trim() || chatLoading) return;
+
+    const nextMessages: ChatMessage[] = [
+      ...chatMessages,
+      { role: "user", content: chatInput.trim() },
+    ];
+    setChatMessages(nextMessages);
+    setChatInput("");
+    setChatLoading(true);
+
+    const result = await guidedJournalingTurnAction({
+      systemPrompt: getFullSystemPrompt(selectedPreset),
+      starterQuestion: selectedPreset.starterQuestion,
+      messages: nextMessages,
+    });
+
+    if (result.success && result.data) {
+      setChatMessages((prev) => [
+        ...prev,
+        { role: "assistant", content: result.data.response },
+      ]);
+      setReadyToCapture(Boolean(result.data.readyToCapture));
+      setCaptureReason(result.data.captureReason || "");
+    } else {
+      setChatMessages((prev) => [
+        ...prev,
+        {
+          role: "assistant",
+          content: result.error || "うまく返答できませんでした。",
+        },
+      ]);
+    }
+
+    setChatLoading(false);
+  };
+
+  const handleCreateDraft = async () => {
+    if (!selectedPreset || chatLoading) return;
+    setChatLoading(true);
+
+    const result = await generateJournalingDraftAction({
+      systemPrompt: getFullSystemPrompt(selectedPreset),
+      messages: chatMessages,
+    });
+
+    if (result.success && result.data) {
+      setDraftEntry(result.data);
+      setMode("WRITE");
+    } else {
+      alert(result.error || "記録化に失敗しました");
+    }
+
+    setChatLoading(false);
   };
 
   // Mode: SELECT - プリセット選択画面
   if (mode === "SELECT") {
     return (
-      <div style={{ maxWidth: "900px", margin: "0 auto" }}>
+      <div className="journaling-select-shell" style={{ maxWidth: "900px", margin: "0 auto" }}>
         {/* Hero Section */}
         <div
+          className="journaling-select-hero"
           style={{
             textAlign: "center",
             marginBottom: "3rem",
@@ -185,6 +260,7 @@ export function JournalingStarter({ topics }: Props) {
 
         {/* Divider */}
         <div
+          className="journaling-divider"
           style={{
             display: "flex",
             alignItems: "center",
@@ -214,6 +290,7 @@ export function JournalingStarter({ topics }: Props) {
 
         {/* Preset Cards */}
         <div
+          className="journaling-preset-grid"
           style={{
             display: "grid",
             gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))",
@@ -225,10 +302,8 @@ export function JournalingStarter({ topics }: Props) {
             return (
               <button
                 key={preset.id}
-                onClick={() => {
-                  setSelectedPreset(preset);
-                  setMode("PROMPT_COPIED");
-                }}
+                className="journaling-preset-card"
+                onClick={() => startGuidedChat(preset)}
                 style={{
                   padding: "1.25rem",
                   background: colors.bg,
@@ -316,14 +391,15 @@ export function JournalingStarter({ topics }: Props) {
     );
   }
 
-  // Mode: PROMPT_COPIED - プロンプト表示・コピー画面
-  if (mode === "PROMPT_COPIED" && selectedPreset) {
+  // Mode: CHAT - アプリ内AI対話
+  if (mode === "CHAT" && selectedPreset) {
     const colors = PRESET_COLORS[selectedPreset.iconId] || PRESET_COLORS.waves;
 
     return (
-      <div style={{ maxWidth: "700px", margin: "0 auto" }}>
+      <div className="guided-chat-shell">
         {/* Header */}
         <div
+          className="guided-chat-header"
           style={{
             marginBottom: "2rem",
             display: "flex",
@@ -367,187 +443,159 @@ export function JournalingStarter({ topics }: Props) {
           </div>
         </div>
 
-        {/* Progress Steps */}
         <div
+          className="guided-chat-panel"
           style={{
+            padding: "1.5rem",
+            marginBottom: "1.5rem",
+            background: "var(--color-surface)",
+            borderRadius: "16px",
+            border: "1px solid var(--color-border)",
+            minHeight: "420px",
             display: "flex",
-            gap: "0.5rem",
-            marginBottom: "2rem",
+            flexDirection: "column",
+            gap: "1rem",
           }}
         >
-          {["プロンプトをコピー", "AIと対話", "結果を保存"].map((step, i) => (
-            <div
-              key={step}
-              style={{
-                flex: 1,
-                padding: "0.75rem",
-                background:
-                  i === 0 ? colors.accent : "var(--color-bg-tertiary)",
-                borderRadius: "8px",
-                textAlign: "center",
-                fontSize: "0.8rem",
-                fontWeight: 500,
-                color: i === 0 ? "#fff" : "var(--color-text-tertiary)",
-              }}
-            >
-              {i + 1}. {step}
-            </div>
-          ))}
-        </div>
-
-        {/* Step 1: Copy Prompt */}
-        <div
-          style={{
-            padding: "1.5rem",
-            marginBottom: "1.5rem",
-            background: "var(--color-bg-tertiary)",
-            borderRadius: "16px",
-            border: "1px solid var(--color-border)",
-          }}
-        >
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-              marginBottom: "1rem",
-            }}
-          >
-            <h3
-              style={{
-                margin: 0,
-                fontSize: "1rem",
-                display: "flex",
-                alignItems: "center",
-                gap: "0.5rem",
-              }}
-            >
-              <Sparkles size={18} style={{ color: colors.accent }} />
-              AIに渡すプロンプト
-            </h3>
-            <button
-              onClick={handleCopyPrompt}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "0.5rem",
-                padding: "0.6rem 1.2rem",
-                background: copied
-                  ? "var(--color-accent-secondary)"
-                  : colors.accent,
-                color: "#fff",
-                border: "none",
-                borderRadius: "8px",
-                cursor: "pointer",
-                fontWeight: 600,
-                fontSize: "0.9rem",
-                transition: "all 0.2s",
-              }}
-            >
-              {copied ? (
-                <>
-                  <Check size={16} /> コピー完了!
-                </>
-              ) : (
-                <>
-                  <Copy size={16} /> コピー
-                </>
-              )}
-            </button>
-          </div>
-          <textarea
-            readOnly
-            value={getFullSystemPrompt(selectedPreset)}
-            style={{
-              width: "100%",
-              height: "150px",
-              padding: "1rem",
-              fontSize: "0.8rem",
-              fontFamily: "var(--font-mono)",
-              background: "var(--color-bg-primary)",
-              color: "var(--color-text-secondary)",
-              border: "1px solid var(--color-border)",
-              borderRadius: "8px",
-              resize: "none",
-            }}
-          />
-        </div>
-
-        {/* Step 2: Use External AI */}
-        <div
-          style={{
-            padding: "1.5rem",
-            marginBottom: "1.5rem",
-            background: "var(--color-bg-tertiary)",
-            borderRadius: "16px",
-            border: "1px solid var(--color-border)",
-          }}
-        >
-          <h3 style={{ margin: "0 0 1rem 0", fontSize: "1rem" }}>
-            お好みのAIで対話を開始
-          </h3>
-          <div style={{ display: "flex", gap: "0.75rem", flexWrap: "wrap" }}>
-            {[
-              {
-                name: "ChatGPT",
-                url: "https://chat.openai.com/",
-                color: "#10a37f",
-              },
-              { name: "Claude", url: "https://claude.ai/", color: "#cc785c" },
-              {
-                name: "Gemini",
-                url: "https://gemini.google.com/",
-                color: "#4285f4",
-              },
-            ].map((ai) => (
-              <a
-                key={ai.name}
-                href={ai.url}
-                target="_blank"
-                rel="noopener noreferrer"
+          <div className="guided-chat-messages">
+            {chatMessages.map((message, index) => (
+              <div
+                key={index}
+                className={`guided-chat-bubble ${
+                  message.role === "user" ? "is-user" : "is-assistant"
+                }`}
                 style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "0.4rem",
-                  padding: "0.6rem 1.2rem",
-                  background: "var(--color-bg-primary)",
-                  border: `1px solid ${ai.color}40`,
-                  borderRadius: "8px",
-                  color: ai.color,
-                  textDecoration: "none",
+                  justifySelf:
+                    message.role === "user" ? "flex-end" : "flex-start",
+                  maxWidth: "82%",
+                  padding: "0.85rem 1rem",
+                  borderRadius: "14px",
+                  border: "1px solid var(--color-border)",
+                  background:
+                    message.role === "user"
+                      ? colors.accent
+                      : "var(--color-bg-secondary)",
+                  color:
+                    message.role === "user"
+                      ? "#07121c"
+                      : "var(--color-text-primary)",
                   fontSize: "0.9rem",
-                  fontWeight: 500,
-                  transition: "all 0.2s",
+                  lineHeight: 1.7,
                 }}
               >
-                {ai.name} <ExternalLink size={14} />
-              </a>
+                {message.content}
+              </div>
             ))}
+            {chatLoading && (
+              <div
+                style={{
+                  justifySelf: "flex-start",
+                  color: "var(--color-text-tertiary)",
+                  fontSize: "0.85rem",
+                }}
+              >
+                AIが考えています...
+              </div>
+            )}
+          </div>
+
+          {readyToCapture && (
+            <div
+              className="guided-capture-card"
+              style={{
+                border: "1px solid var(--color-border-hover)",
+                borderRadius: "var(--radius-md)",
+                background: "var(--color-accent-subtle)",
+                color: "var(--color-text-primary)",
+                padding: "0.875rem 1rem",
+                fontSize: "0.875rem",
+                lineHeight: 1.6,
+              }}
+            >
+              <strong style={{ color: colors.accent }}>
+                ここまでで記録にできそうです。
+              </strong>
+              {captureReason && (
+                <span style={{ color: "var(--color-text-tertiary)" }}>
+                  {" "}
+                  {captureReason}
+                </span>
+              )}
+            </div>
+          )}
+
+          <div style={{ display: "flex", gap: "0.75rem" }}>
+            <input
+              className="guided-chat-input"
+              value={chatInput}
+              onChange={(e) => setChatInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.nativeEvent.isComposing) {
+                  handleSendChat();
+                }
+              }}
+              placeholder="感じていることをそのまま書く..."
+              disabled={chatLoading}
+              style={{
+                flex: 1,
+                minWidth: 0,
+                background: "var(--color-bg-primary)",
+                color: "var(--color-text-primary)",
+                border: "1px solid var(--color-border)",
+                borderRadius: "999px",
+                padding: "0.8rem 1rem",
+                outline: "none",
+              }}
+            />
+            <button
+              className="guided-chat-send"
+              onClick={handleSendChat}
+              disabled={chatLoading || !chatInput.trim()}
+              style={{
+                border: "none",
+                borderRadius: "999px",
+                background: colors.accent,
+                color: "#07121c",
+                padding: "0 1.25rem",
+                fontWeight: 700,
+                cursor: chatLoading || !chatInput.trim() ? "default" : "pointer",
+                opacity: chatLoading || !chatInput.trim() ? 0.5 : 1,
+              }}
+            >
+              送信
+            </button>
           </div>
         </div>
 
-        {/* Step 3: Record Result */}
         <button
-          onClick={() => setMode("WRITE")}
+          className="guided-capture-button"
+          onClick={handleCreateDraft}
+          disabled={chatLoading || chatMessages.length < 2}
           style={{
             width: "100%",
             padding: "1.25rem",
-            background: `linear-gradient(135deg, ${colors.accent}, ${colors.accent}cc)`,
-            color: "#fff",
-            border: "none",
+            background: readyToCapture
+              ? colors.accent
+              : "var(--color-bg-tertiary)",
+            color: "#07121c",
+            border: readyToCapture
+              ? "none"
+              : "1px solid var(--color-border)",
             borderRadius: "12px",
-            cursor: "pointer",
+            cursor:
+              chatLoading || chatMessages.length < 2 ? "default" : "pointer",
             fontSize: "1rem",
-            fontWeight: 600,
+            fontWeight: 700,
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
             gap: "0.5rem",
             transition: "all 0.2s",
+            opacity: chatLoading || chatMessages.length < 2 ? 0.55 : 1,
           }}
         >
           <Edit3 size={18} />
-          対話結果を記録する
+          対話を記録に変換する
           <ArrowRight size={18} />
         </button>
       </div>
@@ -614,6 +662,9 @@ export function JournalingStarter({ topics }: Props) {
         presetPrompt={
           selectedPreset ? getFullSystemPrompt(selectedPreset) : undefined
         }
+        initialTitle={draftEntry?.title}
+        initialNarrative={draftEntry?.human_view}
+        initialAiView={draftEntry?.ai_view}
       />
     </div>
   );

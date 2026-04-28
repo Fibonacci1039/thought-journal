@@ -4,11 +4,19 @@ import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { Feather, Check, Loader2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { createEntryAction } from "@/app/actions";
+import { createEntryAction, enrichEntryAiViewAction } from "@/app/actions";
 import { CompletionRitual } from "./CompletionRitual";
+import { EntryType } from "@/lib/types";
+
+const QUICK_TYPES: { label: string; value: EntryType }[] = [
+  { label: "メモ", value: "quick_memo" },
+  { label: "引用", value: "quote" },
+  { label: "アイデア", value: "idea" },
+];
 
 export function QuickInput() {
   const [value, setValue] = useState("");
+  const [entryType, setEntryType] = useState<EntryType>("quick_memo");
   const [isFocused, setIsFocused] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showRitual, setShowRitual] = useState(false);
@@ -24,7 +32,20 @@ export function QuickInput() {
       const result = await createEntryAction({
         title: "",
         human_view: value.trim(),
-        ai_view: { schema_version: "1.0" },
+        entry_type: entryType,
+        ai_view: {
+          schema_version: "2.1",
+          type: "quick_capture",
+          quick_capture_type: entryType,
+          reflection_assets: {
+            raw_thought: value.trim(),
+            concerns: [],
+            emotions: [],
+            values: [],
+            next_actions: [],
+            questions_for_future: [],
+          },
+        },
         topic_ids: [],
         source_url: "",
         cite_text: "",
@@ -32,6 +53,9 @@ export function QuickInput() {
       });
 
       if (result.success) {
+        if ("data" in result && result.data?.id) {
+          void enrichEntryAiViewAction(result.data.id);
+        }
         setShowRitual(true);
       } else {
         alert("保存に失敗しました");
@@ -46,6 +70,7 @@ export function QuickInput() {
 
   const handleRitualComplete = () => {
     setValue("");
+    setEntryType("quick_memo");
     setIsSubmitting(false);
     setShowRitual(false);
     router.refresh();
@@ -62,7 +87,8 @@ export function QuickInput() {
   return (
     <>
       <motion.div
-        initial={{ opacity: 0, y: -10 }}
+        className="quick-input-wrap"
+        initial={false}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.3 }}
         style={{
@@ -73,13 +99,18 @@ export function QuickInput() {
           onClick={() => inputRef.current?.focus()}
           style={{
             display: "flex",
-            alignItems: "center",
+            alignItems: "stretch",
+            flexDirection: "column",
             gap: "0.75rem",
-            padding: "0.9rem 1.25rem",
-            backgroundColor: "var(--color-bg-tertiary)",
-            borderRadius: "12px",
+            minHeight: "164px",
+            width: "100%",
+            minWidth: 0,
+            padding: "1.25rem",
+            background:
+              "linear-gradient(180deg, var(--color-surface-raised), var(--color-surface))",
+            borderRadius: "var(--radius-md)",
             border: `1px solid ${
-              isFocused ? "var(--color-accent)" : "var(--color-border)"
+              isFocused ? "var(--color-border-hover)" : "var(--color-border)"
             }`,
             cursor: "text",
             transition: "all 0.2s ease",
@@ -88,15 +119,19 @@ export function QuickInput() {
               : "none",
           }}
         >
-          <Feather
-            size={18}
+          <div
             style={{
-              color: isFocused
-                ? "var(--color-accent)"
-                : "var(--color-text-tertiary)",
-              transition: "color 0.2s ease",
+              display: "flex",
+              alignItems: "center",
+              gap: "0.5rem",
+              color: "var(--color-accent)",
+              fontSize: "0.75rem",
+              fontWeight: 800,
             }}
-          />
+          >
+            <Feather size={14} />
+            ひとこと記録
+          </div>
           <input
             ref={inputRef}
             type="text"
@@ -105,48 +140,100 @@ export function QuickInput() {
             onFocus={() => setIsFocused(true)}
             onBlur={() => setIsFocused(false)}
             onKeyDown={handleKeyDown}
-            placeholder="今、何を考えていますか？"
+            placeholder="忘れたくないことを一行で残す"
             disabled={isSubmitting}
             style={{
               flex: 1,
+              width: "100%",
+              minWidth: 0,
               border: "none",
               background: "transparent",
-              fontSize: "0.95rem",
+              fontSize: "1.1rem",
+              fontWeight: 700,
+              lineHeight: 1.7,
               color: "var(--color-text-primary)",
               outline: "none",
               fontFamily: "var(--font-sans)",
               opacity: isSubmitting ? 0.5 : 1,
             }}
           />
-          <AnimatePresence>
-            {value.trim() && (
-              <motion.button
-                initial={{ opacity: 0, scale: 0.8 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.8 }}
-                onClick={handleSubmit}
-                disabled={isSubmitting}
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  width: "32px",
-                  height: "32px",
-                  borderRadius: "50%",
-                  backgroundColor: "var(--color-accent)",
-                  border: "none",
-                  cursor: isSubmitting ? "wait" : "pointer",
-                  color: "#fff",
-                }}
-              >
-                {isSubmitting ? (
-                  <Loader2 size={16} className="animate-spin" />
-                ) : (
-                  <Check size={16} />
-                )}
-              </motion.button>
-            )}
-          </AnimatePresence>
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: "0.75rem",
+              paddingTop: "0.875rem",
+              borderTop: "1px solid var(--color-border)",
+            }}
+          >
+            <div
+              aria-label="記録タイプ"
+              style={{ display: "flex", gap: "0.5rem", minWidth: 0 }}
+            >
+              {QUICK_TYPES.map((type) => {
+                const isSelected = entryType === type.value;
+                return (
+                  <button
+                    className="quick-type-button"
+                    key={type.value}
+                    type="button"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      setEntryType(type.value);
+                    }}
+                    aria-pressed={isSelected}
+                    style={{
+                      border: isSelected
+                        ? "1px solid var(--color-accent)"
+                        : "1px solid var(--color-border)",
+                      background: isSelected
+                        ? "var(--color-accent-subtle)"
+                        : "transparent",
+                      color: isSelected
+                        ? "var(--color-accent)"
+                        : "var(--color-text-tertiary)",
+                      fontWeight: isSelected ? 800 : 600,
+                    }}
+                  >
+                    {type.label}
+                  </button>
+                );
+              })}
+            </div>
+            <AnimatePresence>
+              {value.trim() && (
+                <motion.button
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.9 }}
+                  onClick={handleSubmit}
+                  disabled={isSubmitting}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: "0.375rem",
+                    minWidth: "58px",
+                    height: "36px",
+                    borderRadius: "var(--radius-md)",
+                    backgroundColor: "var(--color-accent)",
+                    border: "none",
+                    cursor: isSubmitting ? "wait" : "pointer",
+                    color: "#07121c",
+                    fontWeight: 800,
+                  }}
+                >
+                  {isSubmitting ? (
+                    <Loader2 size={16} className="animate-spin" />
+                  ) : (
+                    <Check size={16} />
+                  )}
+                  保存
+                </motion.button>
+              )}
+            </AnimatePresence>
+          </div>
         </div>
       </motion.div>
       <CompletionRitual

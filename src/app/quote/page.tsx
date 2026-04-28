@@ -8,8 +8,8 @@ export default async function QuotePage() {
   const topics = await getTopics();
 
   return (
-    <main className="container animate-enter">
-      <div style={{ marginBottom: "2rem" }}>
+    <main className="quote-page animate-enter">
+      <div style={{ marginBottom: "1.25rem" }}>
         <Link
           href="/"
           className="text-label"
@@ -23,20 +23,14 @@ export default async function QuotePage() {
         </Link>
       </div>
 
-      <h1 style={{ marginBottom: "0.5rem" }}>引用をキャプチャ</h1>
-      <p
-        style={{
-          color: "var(--color-text-tertiary)",
-          marginBottom: "2rem",
-          fontSize: "0.95rem",
-        }}
-      >
-        本、映画、美術館などからの気づきを保存
-      </p>
-
-      <div style={{ maxWidth: "600px" }}>
-        <QuoteForm topics={topics} />
+      <div className="quote-page-header">
+        <div>
+          <h1>引用を残す</h1>
+          <p>心に引っかかった言葉と、自分の反応を分けて保存する。</p>
+        </div>
       </div>
+
+      <QuoteForm topics={topics} />
     </main>
   );
 }
